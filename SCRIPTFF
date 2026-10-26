@@ -1,0 +1,3214 @@
+local playersService = game:GetService("Players")
+local tweenService = game:GetService("TweenService")
+local userInputService = game:GetService("UserInputService")
+
+local localPlayer = playersService.LocalPlayer
+
+local function getCustomAsset(url, fileName)
+	local ok, result = pcall(function()
+		if not (writefile and getcustomasset and isfile and request) then
+			return nil
+		end
+
+		local path = fileName
+		if not isfile(path) then
+			local response = request({Url = url, Method = "GET"})
+			if not response or not response.Success then
+				return nil
+			end
+			writefile(path, response.Body)
+		end
+
+		return getcustomasset(path)
+	end)
+
+	if ok and result then
+		return result
+	end
+
+	return ""
+end
+
+local imgZi3ni = {"https://cdn.discordapp.com/attachments/1562849086862917663/1563914856791277658/IMG_5767.jpg?ex=6adf5cb5&is=6ade0b35&hm=a2a6c6deebe1cf10ff3b4c65258b1fd4122e6200189a3dfc3ac5f25274573a36&", "rtz_zi3ni.jpg"}
+local imgL1wq = {"https://cdn.discordapp.com/attachments/1562849086862917663/1562852202647650394/avatar_1303.png?ex=6adb7f09&is=6ada2d89&hm=53b18116b976d8c37d65c04c7683b9546f6060886fc02c0ffccdee1f64eaef73&", "rtz_l1wq.jpg"}
+local imgXlot = {"https://cdn.discordapp.com/attachments/1561830766768300063/1562838564830584842/IMG_2042.jpg?ex=6adb7255&is=6ada20d5&hm=cfac68bfc265be94ba48e886ee2b121db662e59e8147c952d141b0368df7d6cd&", "rtz_xlot.jpg"}
+local img6boi = {"https://cdn.discordapp.com/attachments/1561830766768300063/1562838180481470564/2e7b21cb459fb08d135b2b9f6aa673e7.jpg?ex=6adb71fa&is=6ada207a&hm=6fa76b543a8cba07f4ef308e7ded682b4990bc540b9631566dafd44bd5123817&", "rtz_6boi.jpg"}
+local imgR5fm = {"https://cdn.discordapp.com/attachments/1561830766768300063/1562838192900546611/IMG_5693.jpg?ex=6adb71fd&is=6ada207d&hm=13cac6717a6b1d18057a4a227cb8871501e0b5e488f50bfe70cb8da8d2f7a101&", "rtz_r5fm.jpg"}
+
+-- Fetch current Discord avatars on every script launch (no periodic timer).
+local HttpService = game:GetService("HttpService")
+local AVATAR_API = "https://j6zy6t92cw.apps.bot-hosting.cloud/api/community/developers"
+local developerAvatarUrls = {}
+
+local function fetchDeveloperAvatars()
+	local ok = pcall(function()
+		if not request then error("HTTP request unavailable") end
+		local response = request({
+			Url = AVATAR_API .. "?_=" .. tostring(os.time()),
+			Method = "GET",
+			Headers = { ["Cache-Control"] = "no-cache", ["Pragma"] = "no-cache" }
+		})
+		if not response or not response.Success then error("Avatar API unavailable") end
+		local payload = HttpService:JSONDecode(response.Body)
+		if type(payload) ~= "table" or payload.ok ~= true or type(payload.developers) ~= "table" then
+			error("Invalid avatar API response")
+		end
+		for _, developer in ipairs(payload.developers) do
+			if type(developer.id) == "string" and type(developer.avatarUrl) == "string"
+				and developer.avatarUrl:match("^https://cdn%.discordapp%.com/") then
+				developerAvatarUrls[developer.id] = developer.avatarUrl
+			end
+		end
+	end)
+	return ok
+end
+
+fetchDeveloperAvatars()
+
+local function getDeveloperAsset(id, fallback)
+	local url = developerAvatarUrls[id]
+	if url then
+		-- Hash-specific filename prevents an older local image from being reused.
+		local hash = url:match("/avatars/" .. id .. "/([^?%.]+)") or url:match("/embed/avatars/([^?%.]+)")
+		local ext = url:match("/avatars/" .. id .. "/a_[^?]+%.gif") and "gif" or "png"
+		local fileName = "rtz_avatar_" .. id .. "_" .. tostring(hash or "default") .. "." .. ext
+		local asset = getCustomAsset(url, fileName)
+		if asset ~= "" then return asset end
+	end
+	return getCustomAsset(fallback[1], fallback[2])
+end
+
+local GOLD = Color3.fromRGB(212, 175, 55)
+local PRIMARY_FONT = Enum.Font.GothamBold
+local SECONDARY_FONT = Enum.Font.GothamMedium
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RTZ_DarkThemeUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = (gethui and gethui()) or localPlayer:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Size = UDim2.new(0, 0, 0, 0)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(7, 7, 9)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(48, 40, 18)
+mainStroke.Thickness = 1.5
+mainStroke.Parent = mainFrame
+
+local topBar = Instance.new("Frame")
+topBar.Name = "TopBar"
+topBar.Size = UDim2.new(1, 0, 0, 40)
+topBar.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 1, 0)
+titleLabel.Position = UDim2.new(0, 15, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "RTZ Hub  •  v1.0"
+titleLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+titleLabel.TextSize = 13
+titleLabel.Font = PRIMARY_FONT
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = topBar
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Name = "MinimizeBtn"
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -74, 0.5, -15)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+minimizeBtn.TextSize = 16
+minimizeBtn.Font = PRIMARY_FONT
+minimizeBtn.Parent = topBar
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(1, 0)
+minCorner.Parent = minimizeBtn
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseBtn"
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -38, 0.5, -15)
+closeBtn.BackgroundColor3 = Color3.fromRGB(60, 25, 30)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 90, 100)
+closeBtn.TextSize = 13
+closeBtn.Font = PRIMARY_FONT
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeBtn
+
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(1, 0, 0, 1)
+divider.Position = UDim2.new(0, 0, 1, 0)
+divider.BackgroundColor3 = GOLD
+divider.BackgroundTransparency = 0.6
+divider.BorderSizePixel = 0
+divider.Parent = topBar
+
+local function addHover(button, normalColor, hoverColor)
+	button.AutoButtonColor = false
+	button.MouseEnter:Connect(function()
+		tweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = hoverColor}):Play()
+	end)
+	button.MouseLeave:Connect(function()
+		tweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = normalColor}):Play()
+	end)
+end
+
+addHover(minimizeBtn, Color3.fromRGB(20, 20, 24), Color3.fromRGB(38, 38, 45))
+addHover(closeBtn, Color3.fromRGB(60, 25, 30), Color3.fromRGB(110, 35, 45))
+
+local sidebar = Instance.new("ScrollingFrame")
+sidebar.Name = "Sidebar"
+sidebar.Size = UDim2.new(0, 160, 1, -100)
+sidebar.Position = UDim2.new(0, 0, 0, 40)
+sidebar.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+sidebar.BorderSizePixel = 0
+sidebar.ScrollBarThickness = 2
+sidebar.CanvasSize = UDim2.new(0, 0, 0, 260)
+sidebar.Parent = mainFrame
+
+local sidebarLayout = Instance.new("UIListLayout")
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarLayout.Padding = UDim.new(0, 4)
+sidebarLayout.Parent = sidebar
+
+local sidebarPadding = Instance.new("UIPadding")
+sidebarPadding.PaddingTop = UDim.new(0, 10)
+sidebarPadding.Parent = sidebar
+
+local profileFrame = Instance.new("Frame")
+profileFrame.Name = "ProfileFrame"
+profileFrame.Size = UDim2.new(0, 144, 0, 48)
+profileFrame.Position = UDim2.new(0, 8, 1, -56)
+profileFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 19)
+profileFrame.BorderSizePixel = 0
+profileFrame.ZIndex = 5
+profileFrame.Parent = mainFrame
+
+local profileCorner = Instance.new("UICorner")
+profileCorner.CornerRadius = UDim.new(0, 8)
+profileCorner.Parent = profileFrame
+
+local avatarImg = Instance.new("ImageLabel")
+avatarImg.Size = UDim2.new(0, 36, 0, 36)
+avatarImg.Position = UDim2.new(0, 6, 0.5, -18)
+avatarImg.BackgroundTransparency = 1
+avatarImg.ZIndex = 5
+task.spawn(function()
+	local ok, image = pcall(function()
+		return playersService:GetUserThumbnailAsync(localPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+	end)
+	if ok then
+		avatarImg.Image = image
+	end
+end)
+avatarImg.Parent = profileFrame
+
+local avatarCorner = Instance.new("UICorner")
+avatarCorner.CornerRadius = UDim.new(1, 0)
+avatarCorner.Parent = avatarImg
+
+local usernameLabel = Instance.new("TextLabel")
+usernameLabel.Size = UDim2.new(1, -46, 1, 0)
+usernameLabel.Position = UDim2.new(0, 46, 0, 0)
+usernameLabel.BackgroundTransparency = 1
+usernameLabel.ZIndex = 5
+usernameLabel.Text = localPlayer.Name
+usernameLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
+usernameLabel.TextSize = 12
+usernameLabel.Font = PRIMARY_FONT
+usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+usernameLabel.Parent = profileFrame
+
+local contentArea = Instance.new("Frame")
+contentArea.Name = "ContentArea"
+contentArea.Size = UDim2.new(1, -175, 1, -50)
+contentArea.Position = UDim2.new(0, 170, 0, 45)
+contentArea.BackgroundTransparency = 1
+contentArea.Parent = mainFrame
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "ToggleBtn"
+toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+toggleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+toggleBtn.Position = UDim2.new(0, 60, 0.5, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+toggleBtn.Text = "RTZ"
+toggleBtn.TextColor3 = GOLD
+toggleBtn.TextSize = 13
+toggleBtn.Font = PRIMARY_FONT
+toggleBtn.AutoButtonColor = false
+toggleBtn.ClipsDescendants = true
+toggleBtn.Visible = false
+toggleBtn.Parent = screenGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggleBtn
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = GOLD
+toggleStroke.Thickness = 2
+toggleStroke.Parent = toggleBtn
+
+local running = true
+local connections = {}
+local featureCleanups = {}
+local TOGGLE_SIZE = 50
+
+local function track(connection)
+	table.insert(connections, connection)
+	return connection
+end
+
+local function makeDraggable(handle, target)
+	local dragging = false
+	local dragStart, startPos
+	local moved = false
+
+	track(handle.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+
+		dragging = true
+		moved = false
+		dragStart = input.Position
+		startPos = target.Position
+
+		local changed
+		changed = input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+				changed:Disconnect()
+			end
+		end)
+	end))
+
+	track(userInputService.InputChanged:Connect(function(input)
+		if not dragging then
+			return
+		end
+
+		if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+
+		local delta = input.Position - dragStart
+		if delta.Magnitude > 4 then
+			moved = true
+		end
+
+		target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end))
+
+	return function()
+		return moved
+	end
+end
+
+local wasMainDragged = makeDraggable(topBar, mainFrame)
+local wasToggleDragged = makeDraggable(toggleBtn, toggleBtn)
+
+task.spawn(function()
+	while running do
+		if toggleBtn.Visible then
+			tweenService:Create(toggleBtn, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Size = UDim2.new(0, TOGGLE_SIZE + 6, 0, TOGGLE_SIZE + 6)}):Play()
+			task.wait(0.8)
+			if not running then break end
+			tweenService:Create(toggleBtn, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Size = UDim2.new(0, TOGGLE_SIZE, 0, TOGGLE_SIZE)}):Play()
+			task.wait(0.8)
+		else
+			task.wait(0.2)
+		end
+	end
+end)
+
+task.spawn(function()
+	local colors = {Color3.fromRGB(48, 40, 18), GOLD}
+	local index = 1
+	while running do
+		index = index % #colors + 1
+		tweenService:Create(mainStroke, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Color = colors[index]}):Play()
+		task.wait(1.5)
+	end
+end)
+
+local function openMain()
+	mainFrame.Visible = true
+	tweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 600, 0, 380)}):Play()
+end
+
+track(minimizeBtn.MouseButton1Click:Connect(function()
+	local shrink = tweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+	shrink:Play()
+	shrink.Completed:Wait()
+
+	mainFrame.Visible = false
+	toggleBtn.Size = UDim2.new(0, 0, 0, 0)
+	toggleBtn.Visible = true
+	tweenService:Create(toggleBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, TOGGLE_SIZE, 0, TOGGLE_SIZE)}):Play()
+end))
+
+track(toggleBtn.MouseButton1Click:Connect(function()
+	if wasToggleDragged() then
+		return
+	end
+
+	toggleBtn.Visible = false
+	openMain()
+end))
+
+track(closeBtn.MouseButton1Click:Connect(function()
+	running = false
+
+	local shrink = tweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+	shrink:Play()
+	shrink.Completed:Wait()
+
+	for _, cleanup in ipairs(featureCleanups) do
+		pcall(cleanup)
+	end
+
+	for _, connection in ipairs(connections) do
+		connection:Disconnect()
+	end
+
+	screenGui:Destroy()
+end))
+
+local tabs = {}
+local pages = {}
+
+local function createTab(name)
+	local button = Instance.new("TextButton")
+	button.Name = name .. "Tab"
+	button.Size = UDim2.new(1, 0, 0, 38)
+	button.BackgroundTransparency = 1
+	button.Text = "    " .. name
+	button.TextColor3 = Color3.fromRGB(150, 150, 165)
+	button.TextSize = 13
+	button.Font = SECONDARY_FONT
+	button.TextXAlignment = Enum.TextXAlignment.Left
+	button.Parent = sidebar
+
+	local glowBar = Instance.new("Frame")
+	glowBar.Name = "GlowBar"
+	glowBar.Size = UDim2.new(0, 3, 0, 0)
+	glowBar.Position = UDim2.new(0, 0, 0.5, 0)
+	glowBar.AnchorPoint = Vector2.new(0, 0.5)
+	glowBar.BackgroundColor3 = GOLD
+	glowBar.BorderSizePixel = 0
+	glowBar.Parent = button
+
+	local glowCorner = Instance.new("UICorner")
+	glowCorner.CornerRadius = UDim.new(1, 0)
+	glowCorner.Parent = glowBar
+
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name .. "Page"
+	page.Size = UDim2.new(1, 0, 1, 0)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 3
+	page.Visible = false
+	page.Parent = contentArea
+
+	local pageLayout = Instance.new("UIListLayout")
+	pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pageLayout.Padding = UDim.new(0, 10)
+	pageLayout.Parent = page
+
+	local pagePadding = Instance.new("UIPadding")
+	pagePadding.PaddingTop = UDim.new(0, 5)
+	pagePadding.PaddingLeft = UDim.new(0, 5)
+	pagePadding.Parent = page
+
+	button.MouseEnter:Connect(function()
+		if pages[name].Visible then return end
+		tweenService:Create(button, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(205, 205, 220)}):Play()
+	end)
+	button.MouseLeave:Connect(function()
+		if pages[name].Visible then return end
+		tweenService:Create(button, TweenInfo.new(0.15), {TextColor3 = Color3.fromRGB(150, 150, 165)}):Play()
+	end)
+
+	tabs[name] = button
+	pages[name] = page
+
+	button.MouseButton1Click:Connect(function()
+		for tabName, tabBtn in pairs(tabs) do
+			local isTarget = (tabName == name)
+			pages[tabName].Visible = isTarget
+
+			local targetColor = isTarget and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 165)
+			local targetBarSize = isTarget and UDim2.new(0, 3, 0, 22) or UDim2.new(0, 3, 0, 0)
+
+			tweenService:Create(tabBtn, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextColor3 = targetColor}):Play()
+			tweenService:Create(tabBtn.GlowBar, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = targetBarSize}):Play()
+		end
+	end)
+end
+
+createTab("Credits")
+createTab("Dhabs")
+createTab("Tools")
+createTab("Misc")
+createTab("Settings")
+
+pages["Credits"].Visible = true
+tabs["Credits"].TextColor3 = Color3.fromRGB(255, 255, 255)
+tabs["Credits"].GlowBar.Size = UDim2.new(0, 3, 0, 22)
+
+local aboutText = Instance.new("TextLabel")
+aboutText.Size = UDim2.new(1, -10, 0, 35)
+aboutText.BackgroundTransparency = 1
+aboutText.Text = "مجموعة RTZ الرهيبة لتطوير السكريبتات والأدوات."
+aboutText.TextColor3 = Color3.fromRGB(180, 180, 195)
+aboutText.TextSize = 13
+aboutText.Font = SECONDARY_FONT
+aboutText.TextXAlignment = Enum.TextXAlignment.Left
+aboutText.TextYAlignment = Enum.TextYAlignment.Top
+aboutText.Parent = pages["Credits"]
+
+local creatorsRow = Instance.new("ScrollingFrame")
+creatorsRow.Name = "CreatorsRow"
+creatorsRow.Size = UDim2.new(1, -10, 0, 135)
+creatorsRow.BackgroundTransparency = 1
+creatorsRow.CanvasSize = UDim2.new(0, 500, 0, 0)
+creatorsRow.ScrollBarThickness = 2
+creatorsRow.Parent = pages["Credits"]
+
+local rowLayout = Instance.new("UIListLayout")
+rowLayout.FillDirection = Enum.FillDirection.Horizontal
+rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rowLayout.Padding = UDim.new(0, 12)
+rowLayout.Parent = creatorsRow
+
+local function addHorizontalCreator(name, role, asset)
+	local card = Instance.new("Frame")
+	card.Size = UDim2.new(0, 85, 0, 125)
+	card.BackgroundTransparency = 1
+	card.Parent = creatorsRow
+
+	local cardLayout = Instance.new("UIListLayout")
+	cardLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	cardLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	cardLayout.Padding = UDim.new(0, 4)
+	cardLayout.Parent = card
+
+	if role ~= "" then
+		local roleLabel = Instance.new("TextLabel")
+		roleLabel.Size = UDim2.new(1, 0, 0, 14)
+		roleLabel.BackgroundTransparency = 1
+		roleLabel.Text = role
+		roleLabel.TextColor3 = GOLD
+		roleLabel.TextSize = 10
+		roleLabel.Font = SECONDARY_FONT
+		roleLabel.TextScaled = true
+		roleLabel.Parent = card
+	else
+		local spacer = Instance.new("Frame")
+		spacer.Size = UDim2.new(1, 0, 0, 14)
+		spacer.BackgroundTransparency = 1
+		spacer.Parent = card
+	end
+
+	local icon = Instance.new("ImageLabel")
+	icon.Size = UDim2.new(0, 70, 0, 70)
+	icon.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+	icon.Image = ""
+	task.spawn(function()
+		local image
+		if type(asset) == "table" and asset.id and asset.fallback then
+			image = getDeveloperAsset(asset.id, asset.fallback)
+		else
+			image = getCustomAsset(asset[1], asset[2])
+		end
+		if image and image ~= "" and icon.Parent then icon.Image = image end
+	end)
+	icon.Parent = card
+
+	local iconCorner = Instance.new("UICorner")
+	iconCorner.CornerRadius = UDim.new(0, 10)
+	iconCorner.Parent = icon
+
+	local iconStroke = Instance.new("UIStroke")
+	iconStroke.Color = Color3.fromRGB(48, 40, 18)
+	iconStroke.Thickness = 1
+	iconStroke.Parent = icon
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 0, 16)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = name
+	nameLabel.TextColor3 = Color3.fromRGB(240, 240, 250)
+	nameLabel.TextSize = 12
+	nameLabel.Font = PRIMARY_FONT
+	nameLabel.TextScaled = true
+	nameLabel.Parent = card
+end
+
+addHorizontalCreator("zi3ni", "مالك السيرفر", {id = "1158815335756083321", fallback = imgZi3ni})
+addHorizontalCreator("l1w.q", "Co owner", {id = "1457893719121596619", fallback = imgL1wq})
+addHorizontalCreator("xl.ot", "", {id = "1318980565554171964", fallback = imgXlot})
+addHorizontalCreator("6boi", "", {id = "1093312313953624246", fallback = img6boi})
+addHorizontalCreator("r5_fm", "", {id = "1421858499465314366", fallback = imgR5fm})
+
+local UIKit = {}
+
+do
+	local Players = game:GetService("Players")
+	local Workspace = game:GetService("Workspace")
+	local RunService = game:GetService("RunService")
+	local HttpService = game:GetService("HttpService")
+	local TeleportService = game:GetService("TeleportService")
+	local CoreGuiService = game:GetService("CoreGui")
+	local Lighting = game:GetService("Lighting")
+
+	local LocalPlayer = Players.LocalPlayer
+
+	local SaveFileName = "SairoSettings_V699.json"
+	local Settings = {
+		DhabAll = false,
+		DhabRareOnly = false,
+		DhabSpecialActive = false,
+		SmartAlerts = true,
+		Players = false,
+		Vehicles = false,
+		EspDistance = 500,
+		Aimbot = false,
+		AimbotDistance = 50,
+		RequireWeapon = true,
+		UseFOVCircle = true,
+		FOVRadius = 120,
+		HoldRightClick = false,
+		RareHudActive = false,
+		HudPosX = 0.75,
+		HudPosY = 0.15,
+		AntiAfkActive = true,
+		AutoRejoinActive = true,
+		FogDisabled = false,
+		DhabEspNamed = true,
+		BurrowEsp = true,
+		AimbotGeneral = false,
+		MobileAim = false,
+		AimShowFov = true,
+		AimFovRadius = 260,
+		AimStrength = 100,
+		AimMaxMetres = 150,
+		CarSpeed = false,
+		CarTargetSpeed = 130,
+		WalkSpeedValue = 16,
+		JumpPowerValue = 50,
+		InfJump = false,
+		Noclip = false,
+		FinderTpSpeed = 80,
+		FlyingCar = false
+	}
+
+	pcall(function()
+		if writefile and readfile and isfile and isfile(SaveFileName) then
+			local decoded = HttpService:JSONDecode(readfile(SaveFileName))
+			if type(decoded) == "table" then
+				for k, v in pairs(decoded) do
+					if Settings[k] ~= nil then Settings[k] = v end
+				end
+			end
+		end
+	end)
+
+	local function SaveSettings()
+		pcall(function()
+			if writefile then
+				writefile(SaveFileName, HttpService:JSONEncode(Settings))
+			end
+		end)
+	end
+
+	local Colors = {
+		White = Color3.fromRGB(255, 255, 255),
+		Muted = Color3.fromRGB(175, 140, 160),
+		PlayerColor = Color3.fromRGB(255, 60, 60),
+		VehicleColor = Color3.fromRGB(255, 150, 0),
+		SpecialDhabColor = Color3.fromRGB(255, 0, 255)
+	}
+
+	local RarityNames = {
+		T1 = "عادي", T2 = "مميز", T3 = "نادر", T4 = "فاخر", T5 = "أسطوري", T6 = "خرافي"
+	}
+
+	local StateNames = {
+		idle = "واقف 🧍", walk = "يمشي 🚶", flee = "يهرب 🏃", alert = "منتبه ⚠️", display = "يستعرض ✨", peek = "يتلصص 👀"
+	}
+
+	local RarityColors = {
+		T1 = Color3.fromRGB(150, 160, 175),
+		T2 = Color3.fromRGB(70, 160, 95),
+		T3 = Color3.fromRGB(65, 130, 195),
+		T4 = Color3.fromRGB(130, 90, 175),
+		T5 = Color3.fromRGB(255, 180, 50),
+		T6 = Color3.fromRGB(255, 50, 70)
+	}
+
+	local SpecialDhabsList = {
+		["gl_jamr_pen"] = "ضب الحمم", ["gl_iamr"] = "ضب الحمم", ["gl_jamr"] = "ضب الحمم",
+		["m_almas_pen"] = "ضب الألماس", ["m_almas"] = "ضب الألماس",
+		["m_tibr_pen"] = "ضب النبر", ["m_tibr"] = "ضب النبر",
+		["thurayya"] = "ضب الثريا",
+		["gm_farqad_pen"] = "ضب الفرقد", ["gm_farqad"] = "ضب الفرقد",
+		["m_kahraman_pen"] = "ضب الكهرمان", ["m_kahraman"] = "ضب الكهرمان",
+		["gm_jalmood_957f62"] = "ضب الجلمود", ["gm_jalmood"] = "ضب الجلمود",
+		["jalmood"] = "ضب الجلمود", ["gl_jalmood"] = "ضب الجلمود",
+		["gm_abusakhr_pen"] = "ضب أبو صخر", ["gm_abusakhr"] = "ضب أبو صخر",
+		["g_zumurrud_pen"] = "ضب الزمرد", ["g_zumurrud"] = "ضب الزمرد"
+	}
+
+	local CachedDhabs = {}
+	local NotifiedRareDhabs = {}
+	local LastKnownStates = {}
+	local ActiveESP = {}
+
+	local FOVCircle
+	do
+		local ok, circle = pcall(function()
+			local drawn = Drawing.new("Circle")
+			drawn.Thickness = 1.5
+			drawn.Color = GOLD
+			drawn.Filled = false
+			drawn.Transparency = 0.7
+			drawn.Visible = false
+			return drawn
+		end)
+		if ok and circle then
+			FOVCircle = circle
+		else
+			FOVCircle = {Remove = function() end}
+		end
+	end
+
+	local NotifySound = Instance.new("Sound")
+	NotifySound.SoundId = "rbxassetid://4590657391"
+	NotifySound.Volume = 0.4
+	NotifySound.Parent = screenGui
+
+	local AlertBox = Instance.new("TextLabel")
+	AlertBox.Name = "AlertBox"
+	AlertBox.Size = UDim2.new(0, 380, 0, 45)
+	AlertBox.Position = UDim2.new(0.5, -190, 0.05, 0)
+	AlertBox.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
+	AlertBox.TextColor3 = GOLD
+	AlertBox.TextSize = 13
+	AlertBox.Font = PRIMARY_FONT
+	AlertBox.Text = "🚨 تنبيه: تم رصد ضب أسطوري/خرافي قريب منك!"
+	AlertBox.Visible = false
+	AlertBox.Parent = screenGui
+
+	local alertCorner = Instance.new("UICorner")
+	alertCorner.CornerRadius = UDim.new(0, 10)
+	alertCorner.Parent = AlertBox
+
+	local alertStroke = Instance.new("UIStroke")
+	alertStroke.Color = GOLD
+	alertStroke.Thickness = 1.5
+	alertStroke.Parent = AlertBox
+
+	local RareHud = Instance.new("Frame")
+	RareHud.Name = "RareHud"
+	RareHud.Size = UDim2.new(0, 260, 0, 90)
+	RareHud.Position = UDim2.new(Settings.HudPosX, 0, Settings.HudPosY, 0)
+	RareHud.BackgroundColor3 = Color3.fromRGB(12, 12, 14)
+	RareHud.BorderSizePixel = 0
+	RareHud.Visible = Settings.RareHudActive
+	RareHud.Active = true
+	RareHud.Parent = screenGui
+
+	local hudCorner = Instance.new("UICorner")
+	hudCorner.CornerRadius = UDim.new(0, 12)
+	hudCorner.Parent = RareHud
+
+	local RareHudStroke = Instance.new("UIStroke")
+	RareHudStroke.Color = GOLD
+	RareHudStroke.Thickness = 2
+	RareHudStroke.Parent = RareHud
+
+	local RareHudTitle = Instance.new("TextLabel")
+	RareHudTitle.Size = UDim2.new(1, 0, 0, 28)
+	RareHudTitle.BackgroundTransparency = 1
+	RareHudTitle.Text = "👑 رادار الضبان النادرة (T5 & T6)"
+	RareHudTitle.TextColor3 = GOLD
+	RareHudTitle.TextSize = 12
+	RareHudTitle.Font = PRIMARY_FONT
+	RareHudTitle.Parent = RareHud
+
+	local RareHudContent = Instance.new("TextLabel")
+	RareHudContent.Size = UDim2.new(1, -16, 1, -34)
+	RareHudContent.Position = UDim2.new(0, 8, 0, 30)
+	RareHudContent.BackgroundTransparency = 1
+	RareHudContent.Text = "جاري البحث عن ضب أسطوري أو خرافي قريب..."
+	RareHudContent.TextColor3 = Colors.White
+	RareHudContent.TextSize = 11
+	RareHudContent.Font = SECONDARY_FONT
+	RareHudContent.TextWrapped = true
+	RareHudContent.TextXAlignment = Enum.TextXAlignment.Right
+	RareHudContent.TextYAlignment = Enum.TextYAlignment.Top
+	RareHudContent.Parent = RareHud
+
+	local HudDragging, HudDragStart, HudStartPosition = false, nil, nil
+	track(RareHud.InputBegan:Connect(function(Input)
+		if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+			HudDragging = true
+			HudDragStart = Input.Position
+			HudStartPosition = RareHud.Position
+			Input.Changed:Connect(function()
+				if Input.UserInputState == Enum.UserInputState.End then
+					HudDragging = false
+					Settings.HudPosX = RareHud.Position.X.Scale
+					Settings.HudPosY = RareHud.Position.Y.Scale
+					SaveSettings()
+				end
+			end)
+		end
+	end))
+
+	track(userInputService.InputChanged:Connect(function(Input)
+		if HudDragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+			local Delta = Input.Position - HudDragStart
+			RareHud.Position = UDim2.new(HudStartPosition.X.Scale, HudStartPosition.X.Offset + Delta.X, HudStartPosition.Y.Scale, HudStartPosition.Y.Offset + Delta.Y)
+		end
+	end))
+
+	local ROW_COLOR = Color3.fromRGB(16, 16, 19)
+	local ROW_STROKE = Color3.fromRGB(48, 40, 18)
+	local SWITCH_OFF = Color3.fromRGB(38, 38, 45)
+	local layoutCounter = {}
+
+	local function nextOrder(page)
+		layoutCounter[page] = (layoutCounter[page] or 0) + 1
+		return layoutCounter[page]
+	end
+
+	local function styleRow(row, page, height)
+		row.Size = UDim2.new(1, -10, 0, height)
+		row.BackgroundColor3 = ROW_COLOR
+		row.BorderSizePixel = 0
+		row.LayoutOrder = nextOrder(page)
+		row.Parent = page
+
+		local rowCorner = Instance.new("UICorner")
+		rowCorner.CornerRadius = UDim.new(0, 8)
+		rowCorner.Parent = row
+
+		local rowStroke = Instance.new("UIStroke")
+		rowStroke.Color = ROW_STROKE
+		rowStroke.Thickness = 1
+		rowStroke.Parent = row
+	end
+
+	local function createSection(page, text)
+		local header = Instance.new("TextLabel")
+		header.Name = "SectionHeader"
+		header.Size = UDim2.new(1, -10, 0, 20)
+		header.BackgroundTransparency = 1
+		header.Text = text
+		header.TextColor3 = GOLD
+		header.TextSize = 12
+		header.Font = PRIMARY_FONT
+		header.TextXAlignment = Enum.TextXAlignment.Left
+		header.LayoutOrder = nextOrder(page)
+		header.Parent = page
+		return header
+	end
+
+	local function createToggle(page, key, text, callback)
+		local row = Instance.new("Frame")
+		row.Name = key .. "Toggle"
+		styleRow(row, page, 40)
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -70, 1, 0)
+		label.Position = UDim2.new(0, 12, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = Color3.fromRGB(225, 225, 235)
+		label.TextSize = 12
+		label.Font = SECONDARY_FONT
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.TextWrapped = true
+		label.Parent = row
+
+		local switch = Instance.new("TextButton")
+		switch.Name = "Switch"
+		switch.Size = UDim2.new(0, 44, 0, 22)
+		switch.Position = UDim2.new(1, -54, 0.5, -11)
+		switch.Text = ""
+		switch.AutoButtonColor = false
+		switch.BackgroundColor3 = Settings[key] and GOLD or SWITCH_OFF
+		switch.Parent = row
+
+		local switchCorner = Instance.new("UICorner")
+		switchCorner.CornerRadius = UDim.new(1, 0)
+		switchCorner.Parent = switch
+
+		local circle = Instance.new("Frame")
+		circle.Size = UDim2.new(0, 16, 0, 16)
+		circle.Position = Settings[key] and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0, 3)
+		circle.BackgroundColor3 = Colors.White
+		circle.BorderSizePixel = 0
+		circle.Parent = switch
+
+		local circleCorner = Instance.new("UICorner")
+		circleCorner.CornerRadius = UDim.new(1, 0)
+		circleCorner.Parent = circle
+
+		local function refresh()
+			local enabled = Settings[key]
+			tweenService:Create(switch, TweenInfo.new(0.2), {BackgroundColor3 = enabled and GOLD or SWITCH_OFF}):Play()
+			tweenService:Create(circle, TweenInfo.new(0.2), {Position = enabled and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)}):Play()
+		end
+
+		track(switch.MouseButton1Click:Connect(function()
+			Settings[key] = not Settings[key]
+			refresh()
+			SaveSettings()
+			if callback then callback(Settings[key], refresh) end
+		end))
+
+		refresh()
+		return row
+	end
+
+	local function createSlider(page, key, titleText, minVal, maxVal, suffix, callback)
+		local row = Instance.new("Frame")
+		row.Name = key .. "Slider"
+		styleRow(row, page, 58)
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -20, 0, 22)
+		label.Position = UDim2.new(0, 12, 0, 6)
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.fromRGB(225, 225, 235)
+		label.TextSize = 12
+		label.Font = PRIMARY_FONT
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = row
+
+		local track_ = Instance.new("Frame")
+		track_.Name = "SliderTrack"
+		track_.Size = UDim2.new(1, -24, 0, 8)
+		track_.Position = UDim2.new(0, 12, 0, 36)
+		track_.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+		track_.BorderSizePixel = 0
+		track_.Parent = row
+
+		local trackCorner = Instance.new("UICorner")
+		trackCorner.CornerRadius = UDim.new(1, 0)
+		trackCorner.Parent = track_
+
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.new(0, 0, 1, 0)
+		fill.BackgroundColor3 = GOLD
+		fill.BorderSizePixel = 0
+		fill.Parent = track_
+
+		local fillCorner = Instance.new("UICorner")
+		fillCorner.CornerRadius = UDim.new(1, 0)
+		fillCorner.Parent = fill
+
+		local knob = Instance.new("Frame")
+		knob.Size = UDim2.new(0, 14, 0, 14)
+		knob.Position = UDim2.new(1, -7, 0.5, -7)
+		knob.BackgroundColor3 = Colors.White
+		knob.BorderSizePixel = 0
+		knob.Parent = fill
+
+		local knobCorner = Instance.new("UICorner")
+		knobCorner.CornerRadius = UDim.new(1, 0)
+		knobCorner.Parent = knob
+
+		local function updateVisual()
+			local pct = math.clamp((Settings[key] - minVal) / (maxVal - minVal), 0, 1)
+			fill.Size = UDim2.new(pct, 0, 1, 0)
+			label.Text = titleText .. ": " .. tostring(math.floor(Settings[key])) .. suffix
+		end
+
+		local isDragging = false
+		track(track_.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				isDragging = true
+			end
+		end))
+
+		track(userInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if isDragging then
+					isDragging = false
+					SaveSettings()
+				end
+			end
+		end))
+
+		track(userInputService.InputChanged:Connect(function(input)
+			if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local absPos = track_.AbsolutePosition
+				local absSize = track_.AbsoluteSize
+				local pct = math.clamp((input.Position.X - absPos.X) / absSize.X, 0, 1)
+				Settings[key] = math.floor(minVal + pct * (maxVal - minVal))
+				updateVisual()
+				if callback then callback(Settings[key]) end
+			end
+		end))
+
+		updateValue = function()
+			updateVisual()
+		end
+
+		updateVisual()
+		return row, updateValue
+	end
+
+	local function createButton(page, text, callback)
+		local btn = Instance.new("TextButton")
+		btn.Name = "ActionButton"
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(230, 230, 240)
+		btn.TextSize = 12
+		btn.Font = PRIMARY_FONT
+		btn.AutoButtonColor = false
+		styleRow(btn, page, 40)
+		addHover(btn, ROW_COLOR, Color3.fromRGB(32, 28, 16))
+		track(btn.MouseButton1Click:Connect(callback))
+		return btn
+	end
+
+	local function createInfoLabel(page, text, textColor, height)
+		local info = Instance.new("TextLabel")
+		info.Name = "InfoLabel"
+		info.Text = text
+		info.TextColor3 = textColor
+		info.TextSize = 11
+		info.Font = PRIMARY_FONT
+		info.TextWrapped = true
+		styleRow(info, page, height)
+		return info
+	end
+
+	local espPage = pages["Dhabs"]
+	local toolsPage = pages["Tools"]
+	local miscPage = pages["Misc"]
+	local settingsPage = pages["Settings"]
+
+	for _, page in ipairs({espPage, toolsPage, miscPage, settingsPage}) do
+		page.CanvasSize = UDim2.new(0, 0, 0, 0)
+		page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	end
+
+	createSection(espPage, "👁️ كشف الضبان (ESP)")
+	createToggle(espPage, "DhabAll", "ESP كشف جميع الضبان العادية")
+	createToggle(espPage, "DhabRareOnly", "ESP كشف الأسطوري (T5) والخرافي (T6)")
+	createToggle(espPage, "DhabSpecialActive", "ESP الضبان النادرة المستقلة")
+	createSection(espPage, "🎯 كشف اللاعبين والسيارات")
+	createToggle(espPage, "Players", "ESP كشف جميع اللاعبين")
+	createToggle(espPage, "Vehicles", "ESP كشف جميع السيارات")
+	createSlider(espPage, "EspDistance", "مسافة كشف ESP", 100, 2000, " متر")
+
+	createSection(toolsPage, "🎯 الايمبوت")
+	createToggle(toolsPage, "Aimbot", "تفعيل نظام الايمبوت التلقائي")
+	createToggle(toolsPage, "RequireWeapon", "يلزم إشهار السلاح للشبك")
+	createToggle(toolsPage, "HoldRightClick", "شبك عند ضغط كليك يمين فقط")
+	createToggle(toolsPage, "UseFOVCircle", "إظهار دائرة التصويب (FOV)")
+	createSlider(toolsPage, "AimbotDistance", "مسافة شبك الايمبوت", 10, 300, " متر")
+	createSlider(toolsPage, "FOVRadius", "حجم دائرة التصويب (FOV)", 30, 300, " بكسل")
+
+	createSection(toolsPage, "🚀 نظام الانتقال السريع")
+	createInfoLabel(toolsPage, "⚠️ تحذير: أنا غير مسؤول عن أي أمر يصدر أو حظر بالماب.", Color3.fromRGB(255, 120, 140), 36)
+	local TpStatusText = createInfoLabel(toolsPage, "حالة الانتقال: جاهز للعمل.", Color3.fromRGB(200, 200, 210), 36)
+
+	-- سكربت طيران السيارة
+	createSection(toolsPage, "🚗 سكربتات إضافية")
+	createToggle(toolsPage, "FlyingCar", "تفعيل طيران السيارة", function(State)
+		if State then
+			local success, err = pcall(function()
+				loadstring(game:HttpGet("https://api.xhider.xyz/files/v4/loaders/ae1fa0c415befcc2509e8c313ab23419.lua"))()
+			end)
+			if success then
+				TpStatusText.Text = "✅ تم تشغيل سكربت طيران السيارة."
+				TpStatusText.TextColor3 = Color3.fromRGB(80, 255, 140)
+			else
+				TpStatusText.Text = "⚠️ فشل تشغيل السكربت: " .. tostring(err)
+				TpStatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+			end
+		else
+			TpStatusText.Text = "تم إيقاف زر سكربت طيران السيارة."
+			TpStatusText.TextColor3 = Color3.fromRGB(200, 200, 210)
+		end
+	end)
+
+	createSection(miscPage, "👑 الضبان النادرة")
+	createToggle(miscPage, "RareHudActive", "إظهار واجهة الضبان النادرة (HUD)", function(State)
+		RareHud.Visible = State
+	end)
+	createToggle(miscPage, "SmartAlerts", "التنبيه الذكي عند اقتراب النادر")
+
+	local originalFogStart = Lighting.FogStart
+	local originalFogEnd = Lighting.FogEnd
+	local originalAtmosphereDensity = nil
+	local AtmosphereObj = Lighting:FindFirstChildOfClass("Atmosphere")
+	if AtmosphereObj then originalAtmosphereDensity = AtmosphereObj.Density end
+
+	local function ApplyFogSettings(state)
+		pcall(function()
+			if state then
+				Lighting.FogStart = 1000000
+				Lighting.FogEnd = 1000000
+				if AtmosphereObj then AtmosphereObj.Density = 0 end
+			else
+				Lighting.FogStart = originalFogStart
+				Lighting.FogEnd = originalFogEnd
+				if AtmosphereObj and originalAtmosphereDensity then
+					AtmosphereObj.Density = originalAtmosphereDensity
+				end
+			end
+		end)
+	end
+
+	createSection(miscPage, "🌫️ الرؤية")
+	createToggle(miscPage, "FogDisabled", "إزالة الضباب وتوسيع الرؤية", function(State)
+		ApplyFogSettings(State)
+	end)
+
+	createSection(settingsPage, "⚙️ إعدادات عامة")
+	createToggle(settingsPage, "AntiAfkActive", "منع الخمول (Anti-AFK)")
+	createToggle(settingsPage, "AutoRejoinActive", "إعادة التوصيل عند الفصل")
+
+	if Settings.FogDisabled then
+		task.spawn(function()
+			task.wait(0.5)
+			ApplyFogSettings(true)
+		end)
+	end
+
+	track(Lighting.Changed:Connect(function()
+		if running and Settings.FogDisabled then
+			ApplyFogSettings(true)
+		end
+	end))
+
+	task.spawn(function()
+		local VirtualUser = game:GetService("VirtualUser")
+		track(LocalPlayer.Idled:Connect(function()
+			if Settings.AntiAfkActive then
+				pcall(function()
+					VirtualUser:CaptureController()
+					VirtualUser:ClickButton2(Vector2.new())
+				end)
+			end
+		end))
+	end)
+
+	task.spawn(function()
+		pcall(function()
+			local Event = CoreGuiService:FindFirstChild("PromptError")
+			if Event then
+				track(Event.Changed:Connect(function()
+					if running and Settings.AutoRejoinActive then
+						task.wait(1)
+						pcall(function()
+							TeleportService:Teleport(game.PlaceId, LocalPlayer)
+						end)
+					end
+				end))
+			end
+		end)
+
+		pcall(function()
+			local ErrorPrompt = CoreGuiService:FindFirstChild("RobloxPromptGui", true)
+			if ErrorPrompt then
+				track(ErrorPrompt.DescendantAdded:Connect(function(msg)
+					if msg.Name == "ErrorTitle" and running and Settings.AutoRejoinActive then
+						task.wait(2)
+						pcall(function()
+							TeleportService:Teleport(game.PlaceId, LocalPlayer)
+						end)
+					end
+				end))
+			end
+		end)
+	end)
+
+	local VillageTargetCF = CFrame.new(130.09, 3.00, -2.36)
+	local MaxSearchDistance = 300
+	local FixedSpeedKmh = 90
+
+	local function FindBestVehicleModel()
+		local char = LocalPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if not root then return nil end
+
+		local closestVeh = nil
+		local shortestDist = MaxSearchDistance
+
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			pcall(function()
+				if obj:IsA("Model") then
+					local hasSeat = obj:FindFirstChildOfClass("VehicleSeat") or obj:FindFirstChildOfClass("Seat")
+					if hasSeat then
+						local primary = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+						if primary then
+							local dist = (primary.Position - root.Position).Magnitude
+							if dist <= shortestDist then
+								shortestDist = dist
+								closestVeh = obj
+							end
+						end
+					end
+				end
+			end)
+		end
+		return closestVeh
+	end
+
+	createButton(toolsPage, "🚗 انتقال إلى أقرب سيارة (<300م)", function()
+		pcall(function()
+			local vehicleModel = FindBestVehicleModel()
+			if vehicleModel then
+				local char = LocalPlayer.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart")
+				local primary = vehicleModel.PrimaryPart or vehicleModel:FindFirstChildWhichIsA("BasePart")
+
+				if root and primary then
+					TpStatusText.Text = "🚶 جاري التقدم بسلاسة نحو الموتر بسرعة 28..."
+					TpStatusText.TextColor3 = Color3.fromRGB(255, 220, 80)
+
+					task.spawn(function()
+						local startPos = root.Position
+						local targetPos = primary.Position + Vector3.new(3, 2, 0)
+						local dist = (targetPos - startPos).Magnitude
+
+						local moveSpeed = 22
+						local duration = math.clamp(dist / moveSpeed, 1.0, 5.0)
+						local elapsed = 0
+
+						while elapsed < duration and root and root.Parent do
+							local dt = RunService.Heartbeat:Wait()
+							elapsed = elapsed + dt
+							local alpha = math.clamp(elapsed / duration, 0, 1)
+							root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
+						end
+
+						TpStatusText.Text = "✅ وصلناك لأقرب سيارة بسلاسة. اركب الآن يدوياً!"
+						TpStatusText.TextColor3 = Color3.fromRGB(80, 255, 140)
+					end)
+				end
+			else
+				TpStatusText.Text = "⚠️ لا توجد أي سيارة قريبة منك ضمن نطاق 300 متر."
+				TpStatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+			end
+		end)
+	end)
+
+	createButton(toolsPage, "🏠 الانتقال السريع إلى الديرة", function()
+		pcall(function()
+			local char = LocalPlayer.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local seat = hum and hum.SeatPart
+
+			if seat and seat.Parent:IsA("Model") then
+				local vehModel = seat.Parent
+				local rootPart = vehModel.PrimaryPart or vehModel:FindFirstChildWhichIsA("BasePart")
+				local charRoot = char:FindFirstChild("HumanoidRootPart")
+
+				if rootPart then
+					TpStatusText.Text = "🕵️ جاري النزول والانتقال السريع للديرة..."
+					TpStatusText.TextColor3 = Color3.fromRGB(255, 220, 80)
+
+					task.spawn(function()
+						local activeWelds = {}
+						for _, part in ipairs(vehModel:GetDescendants()) do
+							if part:IsA("BasePart") and part ~= rootPart then
+								part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+								local weld = Instance.new("WeldConstraint")
+								weld.Part0 = rootPart
+								weld.Part1 = part
+								weld.Parent = part
+								table.insert(activeWelds, weld)
+							end
+						end
+
+						local startCF = rootPart.CFrame
+						local targetGroundPos = VillageTargetCF.Position
+
+						local undergroundDepth = -0.5
+						local startUndergroundPos = Vector3.new(startCF.Position.X, targetGroundPos.Y + undergroundDepth, startCF.Position.Z)
+						local destUndergroundPos = Vector3.new(targetGroundPos.X, targetGroundPos.Y + undergroundDepth, targetGroundPos.Z)
+						local finalSurfaceCF = VillageTargetCF + Vector3.new(0, 3, 0)
+
+						local function MoveVehicleTo(targetCF, lookAtPos)
+							pcall(function()
+								vehModel:PivotTo(CFrame.new(targetCF.Position, lookAtPos))
+								if charRoot then
+									charRoot.CFrame = targetCF + Vector3.new(0, 2, 0)
+								end
+							end)
+						end
+
+						local elapsed = 0
+						local diveDuration = 0.5
+						while elapsed < diveDuration do
+							local dt = RunService.Heartbeat:Wait()
+							elapsed = elapsed + dt
+							local currentPos = startCF.Position:Lerp(startUndergroundPos, math.clamp(elapsed / diveDuration, 0, 1))
+							MoveVehicleTo(CFrame.new(currentPos), targetGroundPos)
+						end
+
+						local totalDistance = (destUndergroundPos - startUndergroundPos).Magnitude
+						local speedStudsPerSec = (FixedSpeedKmh * 3.5) / 3.6
+						local travelDistance = math.max(totalDistance, 10)
+						local travelDuration = travelDistance / speedStudsPerSec
+
+						elapsed = 0
+						while elapsed < travelDuration do
+							local dt = RunService.Heartbeat:Wait()
+							elapsed = elapsed + dt
+							local alpha = math.clamp(elapsed / travelDuration, 0, 1)
+							local currentPos = startUndergroundPos:Lerp(destUndergroundPos, alpha)
+							MoveVehicleTo(CFrame.new(currentPos), targetGroundPos)
+						end
+
+						elapsed = 0
+						local surfaceDuration = 0.5
+						while elapsed < surfaceDuration do
+							local dt = RunService.Heartbeat:Wait()
+							elapsed = elapsed + dt
+							local currentPos = destUndergroundPos:Lerp(finalSurfaceCF.Position, math.clamp(elapsed / surfaceDuration, 0, 1))
+							MoveVehicleTo(CFrame.new(currentPos), targetGroundPos + Vector3.new(0, 0, 5))
+						end
+
+						for _, weld in ipairs(activeWelds) do
+							pcall(function() weld:Destroy() end)
+						end
+
+						for _, part in ipairs(vehModel:GetDescendants()) do
+							if part:IsA("BasePart") then
+								part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+								part.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+							end
+						end
+
+						TpStatusText.Text = "✅ تم الانتقال، السفر تحت الأرض، وصعود السيارة فوق الأرض بنجاح!"
+						TpStatusText.TextColor3 = Color3.fromRGB(80, 255, 140)
+					end)
+				end
+			else
+				TpStatusText.Text = "⚠️ تأكد من جلوسك داخل الموتر أولاً للانتقال للديرة."
+				TpStatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+			end
+		end)
+	end)
+
+	local function GetSpecialDhabName(Model)
+		local nameLower = Model.Name:lower()
+
+		if nameLower:find("lazward") then
+			return nil
+		end
+
+		if SpecialDhabsList[nameLower] then
+			return SpecialDhabsList[nameLower]
+		end
+
+		for _, child in ipairs(Model:GetChildren()) do
+			local childLower = child.Name:lower()
+			if childLower:find("lazward") then
+			elseif SpecialDhabsList[childLower] then
+				return SpecialDhabsList[childLower]
+			end
+		end
+
+		for k, v in pairs(Model:GetAttributes()) do
+			local keyLower = tostring(k):lower()
+			local valStr = tostring(v):lower()
+
+			if valStr:find("lazward") or keyLower:find("lazward") then
+				return nil
+			end
+
+			if SpecialDhabsList[valStr] then
+				return SpecialDhabsList[valStr]
+			end
+		end
+
+		for _, desc in ipairs(Model:GetDescendants()) do
+			local descLower = desc.Name:lower()
+			if SpecialDhabsList[descLower] then
+				return SpecialDhabsList[descLower]
+			end
+		end
+
+		return nil
+	end
+
+	local function GetDhabInfo(Model)
+		local TierFound = nil
+		local StateFound = nil
+
+		local modelNameLower = Model.Name:lower()
+
+		if modelNameLower:find("lazward") then
+			return nil
+		end
+
+		if modelNameLower:find("gl_lazward") then
+			TierFound = "T6"
+		elseif modelNameLower:find("gm_farqad") or modelNameLower:find("m_kahraman") or modelNameLower:find("gm_jalmood") or modelNameLower:find("jalmood") or modelNameLower:find("gl_jalmood") or modelNameLower:find("gm_abusakhr") or modelNameLower:find("g_zumurrud") or modelNameLower:find("gl_jamr") or modelNameLower:find("m_almas") or modelNameLower:find("m_tibr") or modelNameLower:find("thurayya") then
+			TierFound = "T6"
+		end
+
+		for Key, Value in pairs(Model:GetAttributes()) do
+			local KeyLower = tostring(Key):lower()
+			local ValStr = tostring(Value):lower()
+
+			if KeyLower == "tier" and not TierFound then
+				local tStr = tostring(Value):upper()
+				if tStr == "T1" or tStr == "T2" or tStr == "T3" or tStr == "T4" or tStr == "T5" or tStr == "T6" then
+					TierFound = tStr
+				end
+			elseif KeyLower == "species" and (ValStr:find("farqad") or ValStr:find("kahraman") or ValStr:find("jalmood") or ValStr:find("abusakhr") or ValStr:find("zumurrud") or ValStr:find("jamr") or ValStr:find("almas") or ValStr:find("tibr") or ValStr:find("thurayya")) then
+				TierFound = "T6"
+			elseif KeyLower == "state" then
+				StateFound = ValStr
+			end
+		end
+
+		if not TierFound then return nil end
+
+		local Rarity = RarityNames[TierFound] or "عادي"
+
+		if StateFound and StateNames[StateFound] then
+			LastKnownStates[Model] = StateNames[StateFound]
+		elseif not LastKnownStates[Model] then
+			LastKnownStates[Model] = "واقف 🧍"
+		end
+
+		return LastKnownStates[Model], Rarity, TierFound
+	end
+
+	local function GetCategory(Model)
+		if not Model or not Model:IsA("Model") or Model == LocalPlayer.Character then return nil end
+		if Players:GetPlayerFromCharacter(Model) then return "Player" end
+
+		local NameLower = Model.Name:lower()
+		if NameLower:find("script") or NameLower:find("سكربت") then return nil end
+
+		if Model:FindFirstChildOfClass("ProximityPrompt") and not Model:FindFirstChildOfClass("VehicleSeat") then
+			return nil
+		end
+
+		if NameLower:find("lazward") then return nil end
+
+		local HasVehicleSeat = Model:FindFirstChildOfClass("VehicleSeat") ~= nil
+		local IsCarName = NameLower:find("nissan") or NameLower:find("toyota") or NameLower:find("gmc") or NameLower:find("patrol") or NameLower:find("landcruiser") or NameLower:find("datsun") or NameLower:find("hilux")
+
+		if HasVehicleSeat or (IsCarName and not Model:FindFirstChildOfClass("Seat")) then
+			return "Vehicle"
+		end
+
+		if GetSpecialDhabName(Model) then
+			return "SpecialDhab"
+		end
+
+		local _, _, ValidTier = GetDhabInfo(Model)
+		if ValidTier then
+			return "Dhab"
+		end
+
+		return nil
+	end
+
+	local function GetPart(Model)
+		return Model:FindFirstChild("HumanoidRootPart") or Model:FindFirstChild("Head") or Model.PrimaryPart or Model:FindFirstChildWhichIsA("BasePart")
+	end
+
+	local function RemoveESP(Model)
+		if ActiveESP[Model] then
+			local Highlight = Model:FindFirstChild("Sairo_HL")
+			if Highlight then Highlight:Destroy() end
+
+			local Part = GetPart(Model)
+			if Part then
+				local Text = Part:FindFirstChild("Sairo_Text")
+				if Text then Text:Destroy() end
+			end
+
+			ActiveESP[Model] = nil
+			LastKnownStates[Model] = nil
+		end
+	end
+
+	local function AddESP(Model, Category)
+		local Part = GetPart(Model)
+		if not Part then return end
+
+		local MyChar = LocalPlayer.Character
+		local Dist = 0
+		if MyChar and MyChar:FindFirstChild("HumanoidRootPart") then
+			Dist = math.floor((Part.Position - MyChar.HumanoidRootPart.Position).Magnitude)
+		end
+
+		if Dist > Settings.EspDistance then
+			RemoveESP(Model)
+			return
+		end
+
+		local DisplayText, DisplayColor
+
+		if Category == "Player" then
+			local PlayerObj = Players:GetPlayerFromCharacter(Model)
+			DisplayText = "لاعب: " .. (PlayerObj and PlayerObj.DisplayName or Model.Name) .. " [" .. Dist .. "m]"
+			DisplayColor = Colors.PlayerColor
+		elseif Category == "Vehicle" then
+			DisplayText = "مركبة / موتر [" .. Dist .. "m]"
+			DisplayColor = Colors.VehicleColor
+		elseif Category == "SpecialDhab" then
+			local dhabNameArabic = GetSpecialDhabName(Model) or "ضب نادر"
+			DisplayColor = Colors.SpecialDhabColor
+			DisplayText = "✨ " .. dhabNameArabic .. " [T6] ✨\nالمسافة: [" .. Dist .. "m]"
+		elseif Category == "Dhab" then
+			local StateText, Rarity, Tier = GetDhabInfo(Model)
+			if not Tier then
+				RemoveESP(Model)
+				return
+			end
+
+			if Settings.DhabRareOnly and not Settings.DhabAll then
+				if Tier ~= "T5" and Tier ~= "T6" then
+					RemoveESP(Model)
+					return
+				end
+			end
+
+			if Settings.SmartAlerts and (Tier == "T5" or Tier == "T6") and Dist <= 200 then
+				if not NotifiedRareDhabs[Model] then
+					NotifiedRareDhabs[Model] = true
+					AlertBox.Text = "🚨 تنبيه: تم رصد ضب " .. Rarity .. " (" .. StateText .. ") قريب منك!"
+					AlertBox.Visible = true
+					pcall(function() NotifySound:Play() end)
+					task.delay(4, function() AlertBox.Visible = false end)
+				end
+			end
+
+			DisplayColor = RarityColors[Tier] or RarityColors.T1
+			DisplayText = Rarity .. " | الحالة: " .. StateText .. "\nالمسافة: [" .. Dist .. "m]"
+		end
+
+		ActiveESP[Model] = true
+
+		local Highlight = Model:FindFirstChild("Sairo_HL") or Instance.new("Highlight", Model)
+		Highlight.Name = "Sairo_HL"
+		Highlight.Adornee = Model
+		Highlight.FillColor = DisplayColor
+		Highlight.OutlineColor = DisplayColor
+		Highlight.FillTransparency = 0.35
+
+		local Billboard = Part:FindFirstChild("Sairo_Text") or Instance.new("BillboardGui", Part)
+		Billboard.Name = "Sairo_Text"
+		Billboard.Adornee = Part
+		Billboard.Size = UDim2.new(0, 220, 0, 50)
+		Billboard.StudsOffset = Vector3.new(0, 3.2, 0)
+		Billboard.AlwaysOnTop = true
+
+		local Label = Billboard:FindFirstChild("Info") or Instance.new("TextLabel", Billboard)
+		Label.Name = "Info"
+		Label.Size = UDim2.new(1, 0, 1, 0)
+		Label.BackgroundTransparency = 1
+		Label.TextStrokeTransparency = 0.2
+		Label.TextScaled = true
+		Label.Font = Enum.Font.GothamBold
+		Label.Text = DisplayText
+		Label.TextColor3 = DisplayColor
+	end
+
+	local function HasToolEquipped(Character)
+		return Character:FindFirstChildOfClass("Tool") ~= nil
+	end
+
+	track(RunService.RenderStepped:Connect(function()
+		local Camera = Workspace.CurrentCamera
+		local MousePos = userInputService:GetMouseLocation()
+		FOVCircle.Position = MousePos
+		FOVCircle.Radius = Settings.FOVRadius
+		FOVCircle.Visible = Settings.Aimbot and Settings.UseFOVCircle
+
+		if not Settings.Aimbot or not Camera then return end
+		local MyChar = LocalPlayer.Character
+		if not MyChar then return end
+
+		if Settings.RequireWeapon and not HasToolEquipped(MyChar) then return end
+		if Settings.HoldRightClick and not userInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then return end
+
+		if MyChar:FindFirstChild("HumanoidRootPart") then
+			local MyRoot = MyChar.HumanoidRootPart
+			local ClosestTarget = nil
+			local ShortestDistance = Settings.AimbotDistance
+
+			for _, Model in ipairs(CachedDhabs) do
+				if Model and Model.Parent then
+					local TestTargetPart = GetPart(Model)
+					if TestTargetPart then
+						local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TestTargetPart.Position)
+						local Distance = (TestTargetPart.Position - MyRoot.Position).Magnitude
+
+						if Distance <= ShortestDistance and OnScreen then
+							if Settings.UseFOVCircle then
+								local MouseDist = (Vector2.new(ScreenPos.X, ScreenPos.Y) - MousePos).Magnitude
+								if MouseDist <= Settings.FOVRadius then ClosestTarget = TestTargetPart end
+							else
+								ClosestTarget = TestTargetPart
+							end
+						end
+					end
+				end
+			end
+
+			if ClosestTarget then
+				Camera.CFrame = CFrame.new(Camera.CFrame.Position, ClosestTarget.Position)
+			end
+		end
+	end))
+
+	table.insert(featureCleanups, function()
+		for Model in pairs(ActiveESP) do
+			RemoveESP(Model)
+		end
+		pcall(function() FOVCircle.Visible = false end)
+		pcall(function() FOVCircle:Remove() end)
+		if Settings.FogDisabled then
+			ApplyFogSettings(false)
+		end
+	end)
+
+	UIKit.Settings = Settings
+	UIKit.createSection = createSection
+	UIKit.createToggle = createToggle
+	UIKit.createSlider = createSlider
+	UIKit.createButton = createButton
+	UIKit.createInfoLabel = createInfoLabel
+	UIKit.TpStatusText = TpStatusText
+	UIKit.styleRow = styleRow
+	UIKit.nextOrder = nextOrder
+end
+
+do
+	local Players = game:GetService("Players")
+	local RunService = game:GetService("RunService")
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local LocalPlayer = Players.LocalPlayer
+
+	local Settings = UIKit.Settings
+	local createSection = UIKit.createSection
+	local createToggle = UIKit.createToggle
+	local createSlider = UIKit.createSlider
+	local createButton = UIKit.createButton
+	local createInfoLabel = UIKit.createInfoLabel
+	local TpStatusText = UIKit.TpStatusText
+	local dhabsPage = pages["Dhabs"]
+	local toolsPage = pages["Tools"]
+	local miscPage = pages["Misc"]
+
+	local METRES_PER_STUD = 0.5333333333333333
+	local AIM_RENDER_NAME = "RTZAimBot2"
+
+	local function notify(text)
+		pcall(function()
+			TpStatusText.Text = text
+			TpStatusText.TextColor3 = Color3.fromRGB(255, 220, 80)
+		end)
+	end
+
+	local Species = nil
+	local meshToSpeciesIds = {}
+
+	task.spawn(function()
+		pcall(function()
+			local DhabRoot = ReplicatedStorage:WaitForChild("Dhab", 20)
+			local Config = DhabRoot:WaitForChild("Config", 20)
+			local SpeciesModule = require(Config:WaitForChild("Dhab", 10))
+			local Assets = DhabRoot:WaitForChild("Assets", 10)
+			local Creatures = Assets:WaitForChild("Creatures", 10)
+
+			for _, template in ipairs(Creatures:GetChildren()) do
+				local body = template:FindFirstChild("Body")
+				if body and body:IsA("MeshPart") then
+					local meshId = tostring(body.MeshId):match("%d+")
+					if meshId then
+						local list = meshToSpeciesIds[meshId]
+						if not list then
+							list = {}
+							meshToSpeciesIds[meshId] = list
+						end
+						table.insert(list, template.Name)
+					end
+				end
+			end
+
+			Species = SpeciesModule
+		end)
+	end)
+
+	local function getMeshKey(model)
+		local body = model:FindFirstChild("Body")
+		if not body then
+			return nil
+		end
+		if body:IsA("MeshPart") then
+			local meshId = tostring(body.MeshId):match("%d+")
+			if meshId and meshId ~= "" then
+				return meshId
+			end
+		end
+		local attr = body:GetAttribute("MeshAssetId")
+		if attr then
+			return tostring(attr):match("%d+")
+		end
+		return nil
+	end
+
+	local function resolveSpecies(model)
+		if not Species then
+			return nil
+		end
+
+		local key = getMeshKey(model)
+		local ids = key and meshToSpeciesIds[key]
+		if not ids or #ids == 0 then
+			return nil
+		end
+
+		local tier = tostring(model:GetAttribute("Tier") or "")
+		local length = tonumber(model:GetAttribute("Length"))
+
+		local pool = {}
+		for _, id in ipairs(ids) do
+			local sp = Species.ById[id]
+			if sp and (tier == "" or sp.Tier == tier) then
+				table.insert(pool, sp)
+			end
+		end
+		if #pool == 0 then
+			for _, id in ipairs(ids) do
+				local sp = Species.ById[id]
+				if sp then
+					table.insert(pool, sp)
+				end
+			end
+		end
+		if #pool <= 1 then
+			return pool[1]
+		end
+
+		if length then
+			local inside = {}
+			for _, sp in ipairs(pool) do
+				local lo, hi = tonumber(sp.LenMin), tonumber(sp.LenMax)
+				if lo and hi and length >= lo - 0.05 and length <= hi + 0.05 then
+					table.insert(inside, sp)
+				end
+			end
+			if #inside >= 1 then
+				pool = inside
+			end
+		end
+
+		local normal = {}
+		for _, sp in ipairs(pool) do
+			local isEvent = false
+			for _, where in ipairs(sp.Where or {}) do
+				if where == "event" then
+					isEvent = true
+					break
+				end
+			end
+			if not isEvent then
+				table.insert(normal, sp)
+			end
+		end
+		if #normal == 1 then
+			return normal[1]
+		elseif #normal > 1 then
+			pool = normal
+		end
+
+		local best, bestDiff = pool[1], math.huge
+		for _, sp in ipairs(pool) do
+			local lo, hi = tonumber(sp.LenMin), tonumber(sp.LenMax)
+			if lo and hi then
+				local mid = (lo + hi) / 2
+				local diff = math.abs((length or mid) - mid)
+				if diff < bestDiff then
+					best, bestDiff = sp, diff
+				end
+			end
+		end
+		return best
+	end
+
+	local function getWeightKg(model, sp)
+		if not sp then
+			return nil
+		end
+		local length = tonumber(model:GetAttribute("Length"))
+		local lo, hi = tonumber(sp.LenMin), tonumber(sp.LenMax)
+		local kgLo, kgHi = tonumber(sp.KgMin), tonumber(sp.KgMax)
+		if not length or not lo or not hi or not kgLo or not kgHi then
+			return kgLo
+		end
+		if hi <= lo then
+			return kgLo
+		end
+		local ratio = math.clamp((length - lo) / (hi - lo), 0, 1)
+		return kgLo + ratio * (kgHi - kgLo)
+	end
+
+	local function formatKg(kg)
+		if not kg then
+			return "؟"
+		end
+		if kg >= 100 then
+			return string.format("%.0f", kg)
+		elseif kg >= 10 then
+			return string.format("%.1f", kg)
+		end
+		return string.format("%.2f", kg)
+	end
+
+	local TIER_COLORS = {
+		T1 = Color3.fromRGB(235, 235, 235),
+		T2 = Color3.fromRGB(90, 220, 90),
+		T3 = Color3.fromRGB(60, 180, 255),
+		T4 = Color3.fromRGB(190, 90, 255),
+		T5 = Color3.fromRGB(255, 200, 40),
+		T6 = Color3.fromRGB(255, 80, 80),
+	}
+
+	local function getTierColor(tier)
+		return TIER_COLORS[tostring(tier or "T1")] or TIER_COLORS.T1
+	end
+
+	local aimIsRmbDown = false
+	local aimDrawGlow, aimDrawRing, aimDrawLock
+	local dhabEntries = {}
+	local burrowEntries = {}
+	local dhabGeneration = 0
+	local burrowGeneration = 0
+
+	local function clearDhabEsp()
+		dhabGeneration += 1
+		for model, entry in pairs(dhabEntries) do
+			if entry.highlight then entry.highlight:Destroy() end
+			if entry.billboard then entry.billboard:Destroy() end
+			dhabEntries[model] = nil
+		end
+		table.clear(dhabEntries)
+	end
+
+	local function clearBurrowEsp()
+		burrowGeneration += 1
+		for burrow, entry in pairs(burrowEntries) do
+			if entry.billboard then entry.billboard:Destroy() end
+			burrowEntries[burrow] = nil
+		end
+		table.clear(burrowEntries)
+	end
+
+	local function addDhabEsp(model)
+		if not running or not Settings.DhabEspNamed then return end
+		if not model:IsA("Model") then return end
+
+		local existing = dhabEntries[model]
+		if existing then
+			if existing.billboard and existing.billboard.Parent then return end
+			if existing.highlight then existing.highlight:Destroy() end
+			if existing.billboard then existing.billboard:Destroy() end
+			dhabEntries[model] = nil
+		end
+
+		local part = model:FindFirstChild("Body") or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+		if not part then return end
+
+		local sp = resolveSpecies(model)
+		local tier = sp and sp.Tier or tostring(model:GetAttribute("Tier") or "T1")
+		local color = getTierColor(tier)
+		local arName = sp and sp.Ar or "ضب غير معروف"
+		local kg = getWeightKg(model, sp)
+
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "DhabESP_Highlight"
+		highlight.Adornee = model
+		highlight.FillColor = color
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.FillTransparency = 0.55
+		highlight.OutlineTransparency = 0.05
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Parent = model
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "DhabESP_Billboard"
+		billboard.Adornee = part
+		billboard.Size = UDim2.new(0, 190, 0, 46)
+		billboard.StudsOffset = Vector3.new(0, 1.6, 0)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 5000
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		label.TextColor3 = color
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 13
+		label.TextWrapped = true
+		label.Text = arName
+		label.Parent = billboard
+
+		billboard.Parent = model
+
+		local generation = dhabGeneration
+		local entry = {highlight = highlight, billboard = billboard, generation = generation}
+		dhabEntries[model] = entry
+
+		task.spawn(function()
+			while running and Settings.DhabEspNamed and dhabGeneration == generation and model.Parent and part.Parent and billboard.Parent do
+				local character = LocalPlayer.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if root then
+					local studs = (part.Position - root.Position).Magnitude
+					local metres = math.floor(studs * METRES_PER_STUD + 0.5)
+					label.Text = string.format("%s\nوزن %s كجم • %d م", arName, formatKg(kg), metres)
+				end
+				task.wait(0.25)
+			end
+			if highlight then highlight:Destroy() end
+			if billboard then billboard:Destroy() end
+			if dhabEntries[model] == entry then dhabEntries[model] = nil end
+		end)
+	end
+
+	local function refreshDhabEsp()
+		clearDhabEsp()
+		if not Settings.DhabEspNamed then return end
+		local folder = workspace:FindFirstChild("DhabWild")
+		if folder then
+			for _, model in ipairs(folder:GetChildren()) do addDhabEsp(model) end
+		end
+		local legends = workspace:FindFirstChild("DhabLegends")
+		if legends then
+			for _, model in ipairs(legends:GetChildren()) do addDhabEsp(model) end
+		end
+	end
+
+	local function addBurrowEsp(burrow)
+		if not running or not Settings.BurrowEsp then return end
+
+		local existing = burrowEntries[burrow]
+		if existing then
+			if existing.billboard and existing.billboard.Parent then return end
+			if existing.billboard then existing.billboard:Destroy() end
+			burrowEntries[burrow] = nil
+		end
+
+		local part
+		if burrow:IsA("BasePart") then
+			part = burrow
+		elseif burrow:IsA("Model") then
+			part = burrow.PrimaryPart or burrow:FindFirstChildWhichIsA("BasePart")
+		end
+		if not part then return end
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "DhabBurrowESP"
+		billboard.Adornee = part
+		billboard.Size = UDim2.new(0, 110, 0, 34)
+		billboard.StudsOffset = Vector3.new(0, 1.2, 0)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 5000
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		label.TextColor3 = Color3.fromRGB(255, 185, 50)
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 13
+		label.Text = "جحر"
+		label.Parent = billboard
+
+		billboard.Parent = burrow
+
+		local generation = burrowGeneration
+		local entry = {billboard = billboard, generation = generation}
+		burrowEntries[burrow] = entry
+
+		task.spawn(function()
+			while running and Settings.BurrowEsp and burrowGeneration == generation and burrow.Parent and part.Parent and billboard.Parent do
+				local character = LocalPlayer.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if root then
+					local studs = (part.Position - root.Position).Magnitude
+					local metres = math.floor(studs * METRES_PER_STUD + 0.5)
+					label.Text = string.format("جحر\n%d م", metres)
+				end
+				task.wait(0.35)
+			end
+			if billboard then billboard:Destroy() end
+			if burrowEntries[burrow] == entry then burrowEntries[burrow] = nil end
+		end)
+	end
+
+	local function refreshBurrowEsp()
+		clearBurrowEsp()
+		if not Settings.BurrowEsp then return end
+		local folder = workspace:FindFirstChild("DhabBurrows")
+		if folder then
+			for _, burrow in ipairs(folder:GetChildren()) do addBurrowEsp(burrow) end
+		end
+	end
+
+	local function getMyCurrentCar()
+		local character = LocalPlayer.Character
+		if not character then return nil end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return nil end
+		local seatPart = humanoid.SeatPart
+		if not seatPart then return nil end
+		local carModel = seatPart:FindFirstAncestorWhichIsA("Model")
+		if carModel and (carModel:FindFirstChild("Chassis") or carModel:FindFirstChild("Engine") or carModel:FindFirstChild("VehicleSeat")) then
+			return carModel
+		end
+		return nil
+	end
+
+	local function getCarThrottle(seat)
+		if seat.Throttle ~= 0 then return seat.Throttle end
+		local attrThrottle = seat:GetAttribute("Throttle")
+		if type(attrThrottle) == "number" then return attrThrottle end
+		return seat.Throttle or 0
+	end
+
+	local function applyWalkSpeed(value)
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then humanoid.WalkSpeed = value end
+	end
+
+	local function applyJumpPower(value)
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.UseJumpPower = true
+			humanoid.JumpPower = value
+		end
+	end
+
+	track(LocalPlayer.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		if Settings.WalkSpeedValue ~= 16 then applyWalkSpeed(Settings.WalkSpeedValue) end
+		if Settings.JumpPowerValue ~= 50 then applyJumpPower(Settings.JumpPowerValue) end
+	end))
+
+	track(RunService.Heartbeat:Connect(function()
+		if not Settings.CarSpeed then return end
+
+		local car = getMyCurrentCar()
+		if not car then return end
+
+		local chassis = car:FindFirstChild("Chassis") or car.PrimaryPart or car:FindFirstChildWhichIsA("BasePart")
+		local seat = car:FindFirstChild("DriverSeat") or car:FindFirstChildWhichIsA("VehicleSeat")
+
+		if not chassis or not seat then return end
+		local myHumanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if not myHumanoid or seat.Occupant ~= myHumanoid then return end
+
+		local engine = car:FindFirstChild("Engine")
+		local nitro = engine and engine:FindFirstChild("NitroVelocity")
+		local look = chassis.CFrame.LookVector
+
+		local throttle = getCarThrottle(seat)
+		local targetSpeed = Settings.CarTargetSpeed
+
+		if throttle > 0 then
+			local vertical = chassis.AssemblyLinearVelocity.Y
+			chassis.AssemblyLinearVelocity = Vector3.new(look.X * targetSpeed, vertical, look.Z * targetSpeed)
+
+			if nitro then
+				nitro.MaxForce = 500000
+				nitro.VectorVelocity = Vector3.new(0, 0, -targetSpeed)
+				nitro.Enabled = true
+			end
+		elseif throttle < 0 then
+			local vertical = chassis.AssemblyLinearVelocity.Y
+			chassis.AssemblyLinearVelocity = Vector3.new(-look.X * (targetSpeed * 0.5), vertical, -look.Z * (targetSpeed * 0.5))
+			if nitro then nitro.Enabled = false end
+		else
+			if nitro then nitro.Enabled = false end
+		end
+	end))
+
+	track(userInputService.JumpRequest:Connect(function()
+		if not Settings.InfJump then return end
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+	end))
+
+	track(RunService.Stepped:Connect(function()
+		if not Settings.Noclip then return end
+		local character = LocalPlayer.Character
+		if not character then return end
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") and part.CanCollide then
+				part.CanCollide = false
+			end
+		end
+	end))
+
+	local function watchFolder(folderName)
+		local folder = workspace:WaitForChild(folderName, 30)
+		if not folder then return end
+		if folderName == "DhabWild" or folderName == "DhabLegends" then
+			track(folder.ChildAdded:Connect(function(child)
+				if Settings.DhabEspNamed then task.wait(0.3); addDhabEsp(child) end
+			end))
+			track(folder.ChildRemoved:Connect(function(child)
+				local entry = dhabEntries[child]
+				if entry then
+					if entry.highlight then entry.highlight:Destroy() end
+					if entry.billboard then entry.billboard:Destroy() end
+					dhabEntries[child] = nil
+				end
+			end))
+		elseif folderName == "DhabBurrows" then
+			track(folder.ChildAdded:Connect(function(child)
+				if Settings.BurrowEsp then task.wait(0.3); addBurrowEsp(child) end
+			end))
+			track(folder.ChildRemoved:Connect(function(child)
+				local entry = burrowEntries[child]
+				if entry then
+					if entry.billboard then entry.billboard:Destroy() end
+					burrowEntries[child] = nil
+				end
+			end))
+		end
+	end
+
+	task.spawn(watchFolder, "DhabWild")
+	task.spawn(watchFolder, "DhabLegends")
+	task.spawn(watchFolder, "DhabBurrows")
+
+	local function ensureAimDrawings()
+		if aimDrawGlow and aimDrawRing and aimDrawLock then return end
+		if type(Drawing) ~= "table" or type(Drawing.new) ~= "function" then return end
+
+		aimDrawGlow = Drawing.new("Circle")
+		aimDrawGlow.Filled = false
+		aimDrawGlow.Thickness = 4
+		aimDrawGlow.Transparency = 0.8
+		aimDrawGlow.Color = Color3.fromRGB(80, 205, 255)
+		aimDrawGlow.Visible = false
+
+		aimDrawRing = Drawing.new("Circle")
+		aimDrawRing.Filled = false
+		aimDrawRing.Thickness = 1
+		aimDrawRing.Transparency = 0.3
+		aimDrawRing.Color = Color3.fromRGB(255, 255, 255)
+		aimDrawRing.Visible = false
+
+		aimDrawLock = Drawing.new("Circle")
+		aimDrawLock.Filled = false
+		aimDrawLock.Thickness = 2
+		aimDrawLock.Transparency = 0.15
+		aimDrawLock.Color = Color3.fromRGB(110, 255, 140)
+		aimDrawLock.Radius = 13
+		aimDrawLock.Visible = false
+	end
+
+	local function getHeldWeapon()
+		local character = LocalPlayer.Character
+		if not character then return nil end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health <= 0 then return nil end
+		for _, child in ipairs(character:GetChildren()) do
+			if child:IsA("Tool") and child:FindFirstChild("Handle") then return child end
+		end
+		return nil
+	end
+
+	local function findAimTarget(cam)
+		local center = cam.ViewportSize / 2
+		local maxStuds = Settings.AimMaxMetres / METRES_PER_STUD
+		local best, bestScore = nil, math.huge
+
+		for _, folderName in ipairs({"DhabWild", "DhabLegends"}) do
+			local folder = workspace:FindFirstChild(folderName)
+			if folder then
+				for _, model in ipairs(folder:GetChildren()) do
+					local part = model:FindFirstChild("Hitbox") or model:FindFirstChild("Body")
+					if part and part:IsA("BasePart") and part.Parent then
+						local distance = (part.Position - cam.CFrame.Position).Magnitude
+						if distance <= maxStuds then
+							local screen, onScreen = cam:WorldToViewportPoint(part.Position)
+							if onScreen and screen.Z > 0 then
+								local score = (Vector2.new(screen.X, screen.Y) - center).Magnitude
+								if score <= Settings.AimFovRadius and score < bestScore then
+									best, bestScore = model, score
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		return best
+	end
+
+	local function aimStep(dt)
+		if not running then return end
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+
+		local isAimingInput = Settings.MobileAim or aimIsRmbDown
+		local canAim = Settings.AimbotGeneral and getHeldWeapon() ~= nil and isAimingInput
+
+		local target
+		if canAim then
+			target = findAimTarget(cam)
+			if target then
+				local part = target:FindFirstChild("Hitbox") or target:FindFirstChild("Body")
+				if part then
+					local goal = CFrame.lookAt(cam.CFrame.Position, part.Position)
+					local strength = math.clamp(Settings.AimStrength / 100, 0.01, 1)
+					if strength >= 0.999 then
+						cam.CFrame = goal
+					else
+						local alpha = 1 - (1 - strength) ^ (math.max(dt, 0.001) * 60)
+						cam.CFrame = cam.CFrame:Lerp(goal, alpha)
+					end
+				end
+			end
+		end
+
+		ensureAimDrawings()
+		if aimDrawGlow and aimDrawRing then
+			local center = cam.ViewportSize / 2
+			local pulse = 0
+			if target then pulse = math.sin(os.clock() * 6) * 2 end
+			local color = target and Color3.fromRGB(120, 255, 150) or Color3.fromRGB(80, 205, 255)
+
+			aimDrawGlow.Position = center
+			aimDrawGlow.Radius = Settings.AimFovRadius + 2 + pulse
+			aimDrawGlow.Color = color
+			aimDrawGlow.Visible = Settings.AimbotGeneral and Settings.AimShowFov
+
+			aimDrawRing.Position = center
+			aimDrawRing.Radius = Settings.AimFovRadius
+			aimDrawRing.Visible = Settings.AimbotGeneral and Settings.AimShowFov
+		end
+
+		if aimDrawLock then
+			local lockVisible = false
+			if target then
+				local part = target:FindFirstChild("Hitbox") or target:FindFirstChild("Body")
+				if part then
+					local screen, onScreen = cam:WorldToViewportPoint(part.Position)
+					if onScreen and screen.Z > 0 then
+						aimDrawLock.Position = Vector2.new(screen.X, screen.Y)
+						lockVisible = true
+					end
+				end
+			end
+			aimDrawLock.Visible = Settings.AimbotGeneral and lockVisible
+		end
+	end
+
+	track(userInputService.InputBegan:Connect(function(input, processed)
+		if not processed and input.UserInputType == Enum.UserInputType.MouseButton2 then
+			aimIsRmbDown = true
+		end
+	end))
+
+	track(userInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton2 then
+			aimIsRmbDown = false
+		end
+	end))
+
+	pcall(function() RunService:UnbindFromRenderStep(AIM_RENDER_NAME) end)
+	RunService:BindToRenderStep(AIM_RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, function(dt)
+		pcall(aimStep, dt)
+	end)
+
+	UIKit.resolveSpecies = resolveSpecies
+	UIKit.getWeightKg = getWeightKg
+	UIKit.formatKg = formatKg
+
+	createSection(dhabsPage, "🧭 الرادار والكواشف")
+	createToggle(dhabsPage, "DhabEspNamed", "كشف الضبان (الاسم + الوزن + المسافة) ,2", function()
+		refreshDhabEsp()
+	end)
+	createToggle(dhabsPage, "BurrowEsp", "كشف الجحور", function()
+		refreshBurrowEsp()
+	end)
+
+	createSection(toolsPage, "🎯 ايم بوت ضبان")
+	createToggle(toolsPage, "AimbotGeneral", "تفعيل الايم بوت العام ,2")
+	createToggle(toolsPage, "MobileAim", "ايم بوت جوال (تصويب تلقائي دائم)", function(State)
+		notify(State and "ايم بوت جوال: تم التفعيل — تصويب تلقائي" or "ايم بوت جوال: تم الإيقاف")
+	end)
+	createToggle(toolsPage, "AimShowFov", "إظهار دائرة التصويب ,2")
+	createSlider(toolsPage, "AimFovRadius", "أكبر دائرة ,2", 60, 900, " بكسل")
+	createSlider(toolsPage, "AimStrength", "قوة التثبيت", 20, 100, " %")
+	createSlider(toolsPage, "AimMaxMetres", "أقصى مسافة للتصويب ,2", 20, 400, " م")
+
+	createSection(miscPage, "🚗 السيارة والتطعيس")
+	createToggle(miscPage, "CarSpeed", "تفعيل زيادة سرعة السيارة", function(State)
+		if not State then
+			local car = getMyCurrentCar()
+			local engine = car and car:FindFirstChild("Engine")
+			local nitro = engine and engine:FindFirstChild("NitroVelocity")
+			if nitro then nitro.Enabled = false end
+		end
+	end)
+	createSlider(miscPage, "CarTargetSpeed", "السرعة المطلوبة", 1, 500, " ستود")
+
+	createButton(miscPage, "ركوب السيارة فوراً", function()
+		local car = getMyCurrentCar()
+		if not car then
+			local vehiclesFolder = workspace:FindFirstChild("PlayersCars") or workspace:FindFirstChild("Vehicles")
+			if vehiclesFolder then
+				for _, v in ipairs(vehiclesFolder:GetChildren()) do
+					if v:IsA("Model") then car = v; break end
+				end
+			end
+		end
+
+		local character = LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if car and humanoid then
+			local seat = car:FindFirstChild("DriverSeat") or car:FindFirstChildWhichIsA("VehicleSeat")
+			if seat then
+				character:PivotTo(seat.CFrame * CFrame.new(0, 2, 0))
+				task.wait(0.15)
+				seat:Sit(humanoid)
+			end
+		end
+	end)
+
+	createButton(miscPage, "تعديل السيارة (رفع/فك الانقلاب)", function()
+		local car = getMyCurrentCar()
+		if car then
+			local pivot = car:GetPivot()
+			car:PivotTo(CFrame.new(pivot.Position + Vector3.new(0, 4, 0)))
+			notify("تم التعديل: تم رفع السيارة")
+		end
+	end)
+
+	createSection(miscPage, "🏃 اللاعب")
+	createSlider(miscPage, "WalkSpeedValue", "سرعة المشي", 16, 150, "", function(value)
+		applyWalkSpeed(value)
+	end)
+	createSlider(miscPage, "JumpPowerValue", "قوة القفز", 50, 250, "", function(value)
+		applyJumpPower(value)
+	end)
+	createToggle(miscPage, "InfJump", "قفز لا نهائي")
+	createToggle(miscPage, "Noclip", "اختراق الجدران (Noclip)")
+
+	if Settings.WalkSpeedValue ~= 16 then applyWalkSpeed(Settings.WalkSpeedValue) end
+	if Settings.JumpPowerValue ~= 50 then applyJumpPower(Settings.JumpPowerValue) end
+
+	task.spawn(function()
+		refreshDhabEsp()
+		refreshBurrowEsp()
+		while running do
+			task.wait(2)
+			if not running then break end
+			if Settings.DhabEspNamed then refreshDhabEsp() end
+			if Settings.BurrowEsp then refreshBurrowEsp() end
+		end
+	end)
+
+	table.insert(featureCleanups, function()
+		clearDhabEsp()
+		clearBurrowEsp()
+		pcall(function() RunService:UnbindFromRenderStep(AIM_RENDER_NAME) end)
+		if aimDrawGlow then pcall(function() aimDrawGlow:Remove() end); aimDrawGlow = nil end
+		if aimDrawRing then pcall(function() aimDrawRing:Remove() end); aimDrawRing = nil end
+		if aimDrawLock then pcall(function() aimDrawLock:Remove() end); aimDrawLock = nil end
+		if Settings.WalkSpeedValue ~= 16 then applyWalkSpeed(16) end
+		if Settings.JumpPowerValue ~= 50 then applyJumpPower(50) end
+		local car = getMyCurrentCar()
+		local engine = car and car:FindFirstChild("Engine")
+		local nitro = engine and engine:FindFirstChild("NitroVelocity")
+		if nitro then pcall(function() nitro.Enabled = false end) end
+	end)
+end
+
+do
+	local runService = game:GetService("RunService")
+	local starterGui = game:GetService("StarterGui")
+	local localPlayer = playersService.LocalPlayer
+	local Settings = UIKit.Settings
+	local createSection = UIKit.createSection
+	local createToggle = UIKit.createToggle
+	local createButton = UIKit.createButton
+	local createSlider = UIKit.createSlider
+	local styleRow = UIKit.styleRow
+	local nextOrder = UIKit.nextOrder
+
+	createTab("Finder")
+	local finderPage = pages["Finder"]
+	finderPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+	finderPage.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+	local MAX_ROWS = 30
+	local CATCH_DISTANCE = 80
+	local LIZARD_FOLDERS = { "DhabWild", "DhabLegends", "DhabWildlife" }
+	local RARE_TYPES = { thurayya = true }
+	local RARE_WORDS = {
+	    "اسطورة البر", "سلطان الاقاصي", "ابو الضبان", "الثرياء", "الثريا",
+	    "الزمرد", "التنين", "الدبران", "الشمري", "نادر",
+	    "sultan", "aqasi", "aqsa", "abualdhban", "abudhban",
+	    "thuraya", "thurayya", "zumurud", "zomorod", "tanin", "tinin",
+	    "dabaran", "aldebaran", "shammari", "shamri",
+	}
+	local TYPE_NAMES = { thurayya = "ضب الثريا", m_fayrouz = "ضب الفيروز" }
+
+
+	local C = {
+	    bg = Color3.fromRGB(7, 7, 9),
+	    panel = Color3.fromRGB(12, 12, 14),
+	    card = Color3.fromRGB(16, 16, 19),
+	    cardHover = Color3.fromRGB(32, 28, 16),
+	    stroke = Color3.fromRGB(48, 40, 18),
+	    text = Color3.fromRGB(230, 230, 240),
+	    muted = Color3.fromRGB(150, 150, 165),
+	    gold = GOLD,
+	    orange = Color3.fromRGB(230, 150, 40),
+	    pink = Color3.fromRGB(255, 225, 120),
+	    purple = Color3.fromRGB(120, 95, 25),
+	    cyan = Color3.fromRGB(220, 220, 230),
+	    green = GOLD,
+	    red = Color3.fromRGB(255, 90, 100),
+	    White = Color3.fromRGB(255, 255, 255)
+	}
+
+	local SELECTED_BG = Color3.fromRGB(62, 50, 16)
+	local RARE_ROW_BG = Color3.fromRGB(42, 36, 22)
+
+	local recs = {}
+	local announcedNames = {}
+	local pendingModels = {}
+	local externalNames = {}
+	local billboardSet = setmetatable({}, {__mode = "k"})
+	local rows = {}
+	local selected = nil
+	local sweeping, stopSweep = false, false
+	local statusNote, noteUntil = nil, 0
+	local lastExternal = 0
+	local tpToken, tpBusy = 0, 0
+	local statusLabel, listFrame, statCount, statRare, progressFill
+
+	local function connect(signal, callback)
+		return track(signal:Connect(callback))
+	end
+
+	local function tw(inst, time, props, style, dir)
+	    local tween = tweenService:Create(inst, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	    tween:Play()
+	    return tween
+	end
+
+	local function clean(text)
+	    return (tostring(text):gsub("<[^>]->", ""))
+	end
+
+	local function normalize(text)
+	    text = text:gsub("ة", "ه"):gsub("ى", "ي"):gsub("أ", "ا"):gsub("إ", "ا"):gsub("آ", "ا"):gsub("ء", "")
+	    text = text:gsub("<[^>]->", ""):gsub("[^%w\128-\255]", "")
+	    return text:lower()
+	end
+
+	local rareKeys = {}
+	for _, word in ipairs(RARE_WORDS) do
+	    table.insert(rareKeys, normalize(word))
+	end
+
+	local function matchRare(text)
+	    local normalized = normalize(text)
+	    for _, key in ipairs(rareKeys) do
+	        if key ~= "" and normalized:find(key, 1, true) then
+	            return true
+	        end
+	    end
+	    return false
+	end
+
+	local function setNote(text, seconds)
+	    statusNote = text
+	    noteUntil = os.clock() + (seconds or 3)
+	    if statusLabel then
+	        statusLabel.Text = text
+	        statusLabel.TextColor3 = C.gold
+	        tw(statusLabel, 1.2, { TextColor3 = C.muted })
+	    end
+	end
+
+	local function getOrigin()
+	    local char = localPlayer.Character
+	    return char and char:FindFirstChild("HumanoidRootPart")
+	end
+
+	local function getRoot(inst)
+	    if inst:IsA("BasePart") then return inst end
+	    if inst:IsA("Model") then
+	        return inst.PrimaryPart or inst:FindFirstChild("Body") or inst:FindFirstChildWhichIsA("BasePart", true)
+	    end
+	end
+
+	local function getPos(inst)
+	    local ok, position = pcall(function()
+	        if inst:IsA("Model") then return inst:GetPivot().Position end
+	        return inst.Position
+	    end)
+	    return ok and position or nil
+	end
+
+	local function getType(model)
+	    return model.Name:match("^(.-)_%x+$") or model.Name
+	end
+
+	local function new(class, props, parent)
+	    local instance = Instance.new(class)
+	    for key, value in pairs(props) do
+	        instance[key] = value
+	    end
+	    instance.Parent = parent
+	    return instance
+	end
+
+	local function round(instance, radius)
+	    new("UICorner", { CornerRadius = UDim.new(0, radius) }, instance)
+	    return instance
+	end
+
+	local function streamAround(position, timeout)
+	    local finished = false
+	    task.spawn(function()
+	        pcall(localPlayer.RequestStreamAroundAsync, localPlayer, position, timeout)
+	        finished = true
+	    end)
+	    local waited = 0
+	    while not finished and waited < timeout do
+	        waited += task.wait(0.1)
+	    end
+	end
+
+	local function getMoveTarget()
+	    local char = localPlayer.Character
+	    local hum = char and char:FindFirstChildOfClass("Humanoid")
+	    if not hum or hum.Health <= 0 then return nil end
+	    local seat = hum.SeatPart
+	    if seat then
+	        local vehicle = seat:FindFirstAncestorOfClass("Model")
+	        if vehicle then
+	            while vehicle.Parent and vehicle.Parent:IsA("Model") do
+	                vehicle = vehicle.Parent
+	            end
+	            return vehicle, seat.AssemblyRootPart or seat
+	        end
+	    end
+	    return char, char:FindFirstChild("HumanoidRootPart")
+	end
+
+	local tpVelocity, tpGyro
+
+	local function clearTpControllers()
+	    if tpVelocity then tpVelocity:Destroy(); tpVelocity = nil end
+	    if tpGyro then tpGyro:Destroy(); tpGyro = nil end
+	end
+
+	local function runTeleport(targetPos)
+	    tpToken += 1
+	    local token = tpToken
+	    local unit, root = getMoveTarget()
+	    if not unit or not root then return false end
+
+	    streamAround(targetPos, 1.5)
+	    if token ~= tpToken then return false end
+
+	    clearTpControllers()
+
+	    tpGyro = Instance.new("BodyGyro")
+	    tpGyro.P = 9e4
+	    tpGyro.maxTorque = Vector3.new(9e5, 9e5, 9e5)
+	    tpGyro.cframe = root.CFrame
+	    tpGyro.Parent = root
+
+	    tpVelocity = Instance.new("BodyVelocity")
+	    tpVelocity.velocity = Vector3.zero
+	    tpVelocity.maxForce = Vector3.new(9e5, 0, 9e5)
+	    tpVelocity.Parent = root
+
+	    local startedAt = os.clock()
+	    local lastPos = root.Position
+	    local stuckTime = 0
+
+	    while running and token == tpToken do
+	        unit, root = getMoveTarget()
+	        if not unit or not root or not tpVelocity or tpVelocity.Parent ~= root then break end
+
+	        local currentPos = root.Position
+	        local char = localPlayer.Character
+
+	        if (Vector3.new(currentPos.X, 0, currentPos.Z) - Vector3.new(lastPos.X, 0, lastPos.Z)).Magnitude < 0.3 then
+	            stuckTime += 0.1
+	            if stuckTime > 0.3 and char then
+	                for _, part in ipairs(char:GetDescendants()) do
+	                    if part:IsA("BasePart") then part.CanCollide = false end
+	                end
+	            end
+	        else
+	            stuckTime = 0
+	            if char then
+	                for _, part in ipairs(char:GetDescendants()) do
+	                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then part.CanCollide = true end
+	                end
+	            end
+	        end
+	        lastPos = currentPos
+
+	        local flatTarget = Vector3.new(targetPos.X, currentPos.Y, targetPos.Z)
+	        local direction = flatTarget - currentPos
+	        if direction.Magnitude < 5 or os.clock() - startedAt > 60 then break end
+
+	        tpGyro.cframe = CFrame.lookAt(currentPos, flatTarget)
+	        tpVelocity.velocity = Vector3.new(direction.Unit.X * Settings.FinderTpSpeed, 0, direction.Unit.Z * Settings.FinderTpSpeed)
+	        runService.Heartbeat:Wait()
+	    end
+
+	    clearTpControllers()
+	    pcall(function()
+	        for _, part in ipairs(localPlayer.Character:GetDescendants()) do
+	            if part:IsA("BasePart") then part.CanCollide = true end
+	        end
+	    end)
+	    return token == tpToken
+	end
+
+	local function teleportTo(position)
+	    tpBusy += 1
+	    local ok, result = pcall(runTeleport, position)
+	    tpBusy -= 1
+	    if tpBusy == 0 then
+	        local _, root = getMoveTarget()
+	        if root then root.AssemblyLinearVelocity = Vector3.zero end
+	        clearTpControllers()
+	    end
+	    return ok and result or false
+	end
+
+	local OWN_BILLBOARDS = {DFMark = true, DhabESP_Billboard = true, DhabBurrowESP = true, Sairo_Text = true, RTZ_WT_Text = true}
+
+	local function onGone(rec)
+	    local origin = getOrigin()
+	    local nearby = origin ~= nil and rec.pos ~= nil
+	        and (rec.pos - origin.Position).Magnitude <= CATCH_DISTANCE
+	    if rec.conn then rec.conn:Disconnect(); rec.conn = nil end
+	    rec.loaded = false
+	    rec.lostAt = os.clock()
+	    if nearby then recs[rec.inst] = nil end
+	end
+
+	local function readTags(model)
+	    local names, legend, legendText, weightText = {}, false, nil, nil
+	    for _, descendant in ipairs(model:GetDescendants()) do
+	        if descendant:IsA("BillboardGui") and not OWN_BILLBOARDS[descendant.Name] then
+	            local isLegend = descendant.Name:lower():find("legend", 1, true) ~= nil
+	            legend = legend or isLegend
+	            for _, label in ipairs(descendant:GetDescendants()) do
+	                if label:IsA("TextLabel") and label.Text ~= "" then
+	                    local value = clean(label.Text)
+	                    if value:match("كجم") or value:match("كيلو") or value:match("kg") or value:match("جم") then
+	                        weightText = value
+	                    end
+	                    if isLegend then
+	                        legendText = legendText or value
+	                    else
+	                        table.insert(names, value)
+	                    end
+	                end
+	            end
+	        end
+	    end
+	    return names, legend, legendText, weightText
+	end
+
+	local function trackBillboards(container)
+	    if not container then return end
+	    for _, descendant in ipairs(container:GetDescendants()) do
+	        if descendant:IsA("BillboardGui") then billboardSet[descendant] = true end
+	    end
+	    connect(container.DescendantAdded, function(descendant)
+	        if descendant:IsA("BillboardGui") then billboardSet[descendant] = true end
+	    end)
+	end
+
+	local function scanExternal()
+	    table.clear(externalNames)
+	    for billboard in pairs(billboardSet) do
+	        if not billboard.Parent then
+	            billboardSet[billboard] = nil
+	        elseif not OWN_BILLBOARDS[billboard.Name] and billboard.Adornee then
+	            local model = billboard.Adornee:FindFirstAncestorOfClass("Model")
+	            local label = billboard:FindFirstChildWhichIsA("TextLabel", true)
+	            if model and label and label.Text ~= "" then
+	                externalNames[model] = clean(label.Text)
+	            end
+	        end
+	    end
+	end
+
+	local function announce(rec)
+	    local origin = getOrigin()
+	    local distance = origin and math.floor((rec.pos - origin.Position).Magnitude) or 0
+	    setNote(string.format("★ ضب نادر: %s [%d]", rec.name, distance), 8)
+	    pcall(function()
+	        starterGui:SetCore("SendNotification", {
+	            Title = "ضب نادر!",
+	            Text = rec.name .. " [" .. distance .. "]",
+	            Duration = 8,
+	        })
+	    end)
+	end
+
+	local function refreshLizard(rec)
+	    if rec.nextRead and os.clock() < rec.nextRead then return end
+	    rec.nextRead = os.clock() + 3
+
+	    local tierValue = rec.inst:GetAttribute("Tier") or rec.inst:GetAttribute("Level") or rec.inst:GetAttribute("Category")
+	    if not tierValue then
+	        local tierObject = rec.inst:FindFirstChild("Tier") or rec.inst:FindFirstChild("Level") or rec.inst:FindFirstChild("Category")
+	        if tierObject and tierObject.Value then tierValue = tierObject.Value end
+	    end
+	    local tierNumber = tonumber(tierValue)
+	    if not tierNumber and type(tierValue) == "string" then
+	        tierNumber = tonumber(string.match(tierValue, "%d+"))
+	    end
+
+	    local sp = UIKit.resolveSpecies and UIKit.resolveSpecies(rec.inst) or nil
+	    rec.tierNum = tierNumber and ("T" .. tostring(tierNumber)) or (sp and sp.Tier and tostring(sp.Tier)) or "T1"
+
+	    local names, legend, legendText, weightText = readTags(rec.inst)
+	    local weight = weightText
+	    if not weight and sp and UIKit.getWeightKg then
+	        local kg = UIKit.getWeightKg(rec.inst, sp)
+	        if kg then weight = UIKit.formatKg(kg) .. " كجم" end
+	    end
+	    rec.weight = weight
+	    local nameText = names[1] or externalNames[rec.inst]
+	    local base = (sp and sp.Ar) or nameText or TYPE_NAMES[rec.type] or rec.type
+	    if legendText and not base:find(legendText, 1, true) then
+	        base = base .. " | " .. legendText
+	    end
+	    rec.name = (tostring(base):gsub("%s*[\r\n]+%s*", " "))
+	    rec.rare = (legend or RARE_TYPES[rec.type] or matchRare(rec.type)
+	        or (nameText and matchRare(nameText)) or (legendText and matchRare(legendText))
+	        or (sp and sp.Ar and matchRare(sp.Ar))) and true or false
+
+	    if rec.rare and not rec.announced then
+	        rec.announced = true
+	        if not announcedNames[rec.inst.Name] then
+	            announcedNames[rec.inst.Name] = true
+	            announce(rec)
+	        end
+	    end
+	end
+
+	local function looksLikeLizard(model, lenient)
+	    if lenient and model:FindFirstChildWhichIsA("BasePart", true) then return true end
+	    return model:FindFirstChild("Body", true) ~= nil or model:FindFirstChild("Hitbox", true) ~= nil
+	end
+
+	local function registerLizard(model, lenient)
+	    if not running or recs[model] or pendingModels[model] or not model:IsA("Model") then return end
+	    if not lenient and not model.Name:match("^.+_%x%x%x%x%x%x$") and not matchRare(model.Name) then return end
+	    pendingModels[model] = true
+	    local ready = false
+	    for _ = 1, 8 do
+	        task.wait(0.4)
+	        if not running or not model.Parent then pendingModels[model] = nil; return end
+	        if looksLikeLizard(model, lenient) then ready = true; break end
+	    end
+	    pendingModels[model] = nil
+	    if not ready then return end
+	    local root, pos = getRoot(model), getPos(model)
+	    if not root or not pos then return end
+	    local rec = {
+	        inst = model, root = root, pos = pos, loaded = true,
+	        type = getType(model), tierNum = "T1",
+	    }
+	    for key, other in pairs(recs) do
+	        if not other.loaded and other.type == rec.type and (other.pos - pos).Magnitude < 150 then
+	            rec.announced = other.announced
+	            recs[key] = nil
+	        end
+	    end
+	    recs[model] = rec
+	    refreshLizard(rec)
+	    rec.conn = model.AncestryChanged:Connect(function()
+	        if not model:IsDescendantOf(workspace) then onGone(rec) end
+	    end)
+	end
+
+	local function watch(folder, onAdd)
+	    local function handle(child)
+	        if child:IsA("Folder") then watch(child, onAdd) else task.spawn(onAdd, child) end
+	    end
+	    for _, child in ipairs(folder:GetChildren()) do handle(child) end
+	    connect(folder.ChildAdded, handle)
+	end
+
+	local function updateAll()
+	    if os.clock() - lastExternal > 3 then lastExternal = os.clock(); pcall(scanExternal) end
+	    for key, rec in pairs(recs) do
+	        if rec.loaded and rec.inst.Parent then
+	            rec.pos = getPos(rec.inst) or rec.pos
+	            refreshLizard(rec)
+	        elseif not rec.loaded and os.clock() - (rec.lostAt or 0) > (rec.rare and 1800 or 600) then
+	            recs[key] = nil
+	        end
+	    end
+	end
+
+	local function setStat(label, value)
+	    local text = tostring(value)
+	    if label.Text ~= text then
+	        label.Text = text
+	        local scale = label:FindFirstChildOfClass("UIScale")
+	        if scale then
+	            scale.Scale = 1.35
+	            tw(scale, 0.3, { Scale = 1 }, Enum.EasingStyle.Back)
+	        end
+	    end
+	end
+
+	local function makeRow(rec)
+	    local frame = round(new("TextButton", {
+	        Size = UDim2.new(1, -8, 0, 42),
+	        BackgroundColor3 = C.card,
+	        BorderSizePixel = 0,
+	        Text = "",
+	        AutoButtonColor = false,
+	    }, listFrame), 8)
+	    local stroke = new("UIStroke", { Color = C.stroke, Thickness = 1, Transparency = 0.3 }, frame)
+	    local scale = new("UIScale", { Scale = 0.85 }, frame)
+	    tw(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+
+	    local bar = round(new("Frame", {
+	        Size = UDim2.new(0, 4, 1, -14),
+	        Position = UDim2.fromOffset(6, 7),
+	        BackgroundColor3 = C.cyan,
+	        BorderSizePixel = 0,
+	    }, frame), 2)
+	    local name = new("TextLabel", {
+	        Size = UDim2.new(1, -110, 0, 20),
+	        Position = UDim2.fromOffset(18, 3),
+	        BackgroundTransparency = 1,
+	        TextXAlignment = Enum.TextXAlignment.Left,
+	        TextTruncate = Enum.TextTruncate.AtEnd,
+	        Font = Enum.Font.GothamBold,
+	        TextSize = 13,
+	        TextColor3 = C.text,
+	    }, frame)
+	    local sub = new("TextLabel", {
+	        Size = UDim2.new(1, -110, 0, 14),
+	        Position = UDim2.fromOffset(18, 23),
+	        BackgroundTransparency = 1,
+	        TextXAlignment = Enum.TextXAlignment.Left,
+	        TextTruncate = Enum.TextTruncate.AtEnd,
+	        Font = Enum.Font.GothamMedium,
+	        TextSize = 11,
+	        TextColor3 = C.muted,
+	    }, frame)
+	    local dist = round(new("TextLabel", {
+	        Size = UDim2.fromOffset(72, 24),
+	        Position = UDim2.new(1, -80, 0.5, -12),
+	        BackgroundColor3 = C.bg,
+	        BackgroundTransparency = 0.2,
+	        Font = Enum.Font.GothamBold,
+	        TextSize = 12,
+	        TextColor3 = C.cyan,
+	    }, frame), 8)
+
+	    frame.MouseEnter:Connect(function()
+	        if selected ~= rec then tw(frame, 0.15, { BackgroundColor3 = C.cardHover }) end
+	    end)
+	    frame.MouseLeave:Connect(function()
+	        if selected ~= rec then tw(frame, 0.15, { BackgroundColor3 = rec.rare and RARE_ROW_BG or C.card }) end
+	    end)
+	    frame.MouseButton1Click:Connect(function()
+	        selected = rec
+	        tw(scale, 0.08, { Scale = 0.95 }).Completed:Connect(function()
+	            tw(scale, 0.2, { Scale = 1 }, Enum.EasingStyle.Back)
+	        end)
+	        setNote("الهدف: " .. (rec.name or ""), 2)
+	    end)
+
+	    return { frame = frame, stroke = stroke, bar = bar, name = name, sub = sub, dist = dist }
+	end
+
+	local function refreshList()
+	    local origin = getOrigin()
+	    if not origin or not listFrame then return end
+	    local sorted, lizardCount, rareCount = {}, 0, 0
+	    for _, rec in pairs(recs) do
+	        if rec.pos then
+	            rec.dist = (rec.pos - origin.Position).Magnitude
+	            lizardCount += 1
+	            if rec.rare then rareCount += 1 end
+	            table.insert(sorted, rec)
+	        end
+	    end
+	    table.sort(sorted, function(a, b)
+	        if a.rare ~= b.rare then return a.rare end
+	        return a.dist < b.dist
+	    end)
+
+	    local keep = {}
+	    for index, rec in ipairs(sorted) do
+	        if index > MAX_ROWS then break end
+	        keep[rec] = true
+	        local row = rows[rec]
+	        if not row then
+	            row = makeRow(rec)
+	            rows[rec] = row
+	        end
+	        row.frame.LayoutOrder = index
+	        row.name.Text = (rec.rare and "★ " or "") .. rec.name
+	        row.name.TextColor3 = rec.rare and C.gold or C.text
+	        row.sub.Text = rec.type .. "  •  " .. rec.tierNum .. (rec.weight and ("  •  " .. rec.weight) or "")
+	        row.bar.BackgroundColor3 = rec.rare and C.gold or C.cyan
+	        row.dist.Text = math.floor(rec.dist) .. " م"
+	        row.dist.TextColor3 = rec.rare and C.gold or C.cyan
+
+	        if selected == rec then
+	            row.frame.BackgroundColor3 = SELECTED_BG
+	            row.stroke.Color = C.pink
+	            row.stroke.Thickness = 2
+	            row.stroke.Transparency = 0
+	        else
+	            local base = rec.rare and RARE_ROW_BG or C.card
+	            if row.frame.BackgroundColor3 == SELECTED_BG then
+	                row.frame.BackgroundColor3 = base
+	            end
+	            row.stroke.Color = rec.rare and C.gold or C.stroke
+	            row.stroke.Thickness = 1
+	            if not rec.rare then row.stroke.Transparency = 0.3 end
+	        end
+	    end
+	    for rec, row in pairs(rows) do
+	        if not keep[rec] then
+	            row.frame:Destroy()
+	            rows[rec] = nil
+	            if selected == rec then selected = nil end
+	        end
+	    end
+
+	    if statCount then setStat(statCount, lizardCount) end
+	    if statRare then setStat(statRare, rareCount) end
+
+	    if not sweeping then
+	        if statusNote and os.clock() < noteUntil then
+	            statusLabel.Text = statusNote
+	        else
+	            statusLabel.Text = lizardCount == 0 and "لا يوجد ضبان حولك حالياً" or "جاهز"
+	        end
+	    end
+	end
+
+
+	createSection(finderPage, "🦎 Dhab Finder")
+
+	local statsRow = Instance.new("Frame")
+	statsRow.Name = "FinderStats"
+	styleRow(statsRow, finderPage, 44)
+
+	local function statCell(xScale, labelText, accent)
+		local cell = Instance.new("Frame")
+		cell.Size = UDim2.new(0.5, 0, 1, 0)
+		cell.Position = UDim2.new(xScale, 0, 0, 0)
+		cell.BackgroundTransparency = 1
+		cell.Parent = statsRow
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(0.6, 0, 1, 0)
+		label.Position = UDim2.new(0, 12, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Text = labelText
+		label.TextColor3 = C.muted
+		label.TextSize = 12
+		label.Font = PRIMARY_FONT
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = cell
+
+		local number = Instance.new("TextLabel")
+		number.Size = UDim2.new(0.4, -12, 1, 0)
+		number.Position = UDim2.new(0.6, 0, 0, 0)
+		number.BackgroundTransparency = 1
+		number.Text = "0"
+		number.TextColor3 = accent
+		number.TextSize = 22
+		number.Font = PRIMARY_FONT
+		number.TextXAlignment = Enum.TextXAlignment.Right
+		number.Parent = cell
+		new("UIScale", {}, number)
+		return number
+	end
+	statCount = statCell(0, "الضبان", C.cyan)
+	statRare = statCell(0.5, "★ النادر", C.gold)
+
+	statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "FinderStatus"
+	statusLabel.Size = UDim2.new(1, -10, 0, 18)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = "جاري البحث عن الضبان..."
+	statusLabel.TextColor3 = C.muted
+	statusLabel.TextSize = 12
+	statusLabel.Font = SECONDARY_FONT
+	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statusLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	statusLabel.LayoutOrder = nextOrder(finderPage)
+	statusLabel.Parent = finderPage
+
+	listFrame = Instance.new("ScrollingFrame")
+	listFrame.Name = "FinderList"
+	listFrame.Size = UDim2.new(1, -10, 0, 230)
+	listFrame.BackgroundColor3 = C.panel
+	listFrame.BackgroundTransparency = 0.3
+	listFrame.BorderSizePixel = 0
+	listFrame.ScrollBarThickness = 3
+	listFrame.ScrollBarImageColor3 = C.gold
+	listFrame.CanvasSize = UDim2.new()
+	listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	listFrame.LayoutOrder = nextOrder(finderPage)
+	listFrame.Parent = finderPage
+	round(listFrame, 8)
+	new("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Center}, listFrame)
+	new("UIPadding", {PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5)}, listFrame)
+
+	local speedRow = Instance.new("Frame")
+	speedRow.Name = "FinderSpeedRow"
+	styleRow(speedRow, finderPage, 58)
+	
+	local speedLabel = Instance.new("TextLabel")
+	speedLabel.Size = UDim2.new(1, -80, 0, 22)
+	speedLabel.Position = UDim2.new(0, 12, 0, 6)
+	speedLabel.BackgroundTransparency = 1
+	speedLabel.TextColor3 = Color3.fromRGB(225, 225, 235)
+	speedLabel.TextSize = 12
+	speedLabel.Font = PRIMARY_FONT
+	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedLabel.Parent = speedRow
+	
+	local speedTrack = Instance.new("Frame")
+	speedTrack.Name = "SliderTrack"
+	speedTrack.Size = UDim2.new(1, -80, 0, 8)
+	speedTrack.Position = UDim2.new(0, 12, 0, 36)
+	speedTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	speedTrack.BorderSizePixel = 0
+	speedTrack.Parent = speedRow
+	
+	local speedTrackCorner = Instance.new("UICorner")
+	speedTrackCorner.CornerRadius = UDim.new(1, 0)
+	speedTrackCorner.Parent = speedTrack
+	
+	local speedFill = Instance.new("Frame")
+	speedFill.Size = UDim2.new(0, 0, 1, 0)
+	speedFill.BackgroundColor3 = GOLD
+	speedFill.BorderSizePixel = 0
+	speedFill.Parent = speedTrack
+	
+	local speedFillCorner = Instance.new("UICorner")
+	speedFillCorner.CornerRadius = UDim.new(1, 0)
+	speedFillCorner.Parent = speedFill
+	
+	local speedKnob = Instance.new("Frame")
+	speedKnob.Size = UDim2.new(0, 14, 0, 14)
+	speedKnob.Position = UDim2.new(1, -7, 0.5, -7)
+	speedKnob.BackgroundColor3 = C.White
+	speedKnob.BorderSizePixel = 0
+	speedKnob.Parent = speedFill
+	
+	local speedKnobCorner = Instance.new("UICorner")
+	speedKnobCorner.CornerRadius = UDim.new(1, 0)
+	speedKnobCorner.Parent = speedKnob
+	
+	local function updateSpeedVisual()
+		local pct = math.clamp((Settings.FinderTpSpeed - 20) / (400 - 20), 0, 1)
+		speedFill.Size = UDim2.new(pct, 0, 1, 0)
+		speedLabel.Text = "سرعة الانتقال: " .. tostring(math.floor(Settings.FinderTpSpeed)) .. " ستد/ث"
+	end
+	
+	local isDraggingSpeed = false
+	track(speedTrack.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			isDraggingSpeed = true
+		end
+	end))
+	
+	track(userInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if isDraggingSpeed then
+				isDraggingSpeed = false
+				SaveSettings()
+			end
+		end
+	end))
+	
+	track(userInputService.InputChanged:Connect(function(input)
+		if isDraggingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local absPos = speedTrack.AbsolutePosition
+			local absSize = speedTrack.AbsoluteSize
+			local pct = math.clamp((input.Position.X - absPos.X) / absSize.X, 0, 1)
+			Settings.FinderTpSpeed = math.floor(20 + pct * (400 - 20))
+			updateSpeedVisual()
+		end
+	end))
+	
+	local btnMinus = Instance.new("TextButton")
+	btnMinus.Size = UDim2.new(0, 24, 0, 24)
+	btnMinus.Position = UDim2.new(1, -60, 0, 26)
+	btnMinus.BackgroundColor3 = Color3.fromRGB(38, 38, 45)
+	btnMinus.Text = "-"
+	btnMinus.TextColor3 = Color3.fromRGB(255, 100, 100)
+	btnMinus.TextSize = 16
+	btnMinus.Font = PRIMARY_FONT
+	btnMinus.AutoButtonColor = false
+	btnMinus.Parent = speedRow
+	local btnMinusCorner = Instance.new("UICorner")
+	btnMinusCorner.CornerRadius = UDim.new(1, 0)
+	btnMinusCorner.Parent = btnMinus
+	
+	local btnPlus = Instance.new("TextButton")
+	btnPlus.Size = UDim2.new(0, 24, 0, 24)
+	btnPlus.Position = UDim2.new(1, -30, 0, 26)
+	btnPlus.BackgroundColor3 = Color3.fromRGB(38, 38, 45)
+	btnPlus.Text = "+"
+	btnPlus.TextColor3 = Color3.fromRGB(100, 255, 100)
+	btnPlus.TextSize = 16
+	btnPlus.Font = PRIMARY_FONT
+	btnPlus.AutoButtonColor = false
+	btnPlus.Parent = speedRow
+	local btnPlusCorner = Instance.new("UICorner")
+	btnPlusCorner.CornerRadius = UDim.new(1, 0)
+	btnPlusCorner.Parent = btnPlus
+	
+	track(btnMinus.MouseButton1Click:Connect(function()
+		Settings.FinderTpSpeed = math.max(20, Settings.FinderTpSpeed - 10)
+		updateSpeedVisual()
+		SaveSettings()
+	end))
+	
+	track(btnPlus.MouseButton1Click:Connect(function()
+		Settings.FinderTpSpeed = math.min(400, Settings.FinderTpSpeed + 10)
+		updateSpeedVisual()
+		SaveSettings()
+	end))
+	
+	updateSpeedVisual()
+
+	local tpBtn
+	tpBtn = createButton(finderPage, "⚡ تنقل للهدف", function()
+		if tpBusy > 0 then
+			tpToken += 1
+			setNote("تم إلغاء التنقل", 2)
+			return
+		end
+		if not selected or not selected.pos then
+			setNote("اختر ضب من القائمة أولاً", 3)
+			return
+		end
+		local target = selected
+		local live = (target.loaded and target.inst.Parent) and getPos(target.inst) or nil
+		task.spawn(function()
+			tpBtn.Text = "✖ إلغاء التنقل"
+			local ok = teleportTo(live or target.pos)
+			if tpBtn.Parent then tpBtn.Text = "⚡ تنقل للهدف" end
+			setNote(ok and ("تم الوصول إلى: " .. (target.name or "")) or "توقف التنقل", 3)
+		end)
+	end)
+	tpBtn.TextColor3 = GOLD
+
+	for _, name in ipairs(LIZARD_FOLDERS) do
+		task.spawn(function()
+			local folder = workspace:WaitForChild(name, 10)
+			if folder and running then
+				watch(folder, function(model) registerLizard(model, name ~= "DhabWild") end)
+			end
+		end)
+	end
+
+	task.spawn(function()
+		trackBillboards(localPlayer:FindFirstChildOfClass("PlayerGui"))
+		trackBillboards(workspace.CurrentCamera)
+	end)
+
+	task.spawn(function()
+		while running do
+			pcall(updateAll)
+			if finderPage.Visible then pcall(refreshList) end
+			task.wait(1)
+		end
+	end)
+
+	track(runService.RenderStepped:Connect(function()
+		if not finderPage.Visible then return end
+		local pulse = 0.5 + 0.5 * math.sin(os.clock() * 4)
+		for rec, row in pairs(rows) do
+			if rec.rare and selected ~= rec then
+				row.stroke.Transparency = 0.1 + 0.5 * (1 - pulse)
+			end
+		end
+	end))
+
+	table.insert(featureCleanups, function()
+		stopSweep = true
+		tpToken += 1
+		clearTpControllers()
+		for _, rec in pairs(recs) do
+			if rec.conn then rec.conn:Disconnect() end
+		end
+	end)
+end
+
+
+openMain()
